@@ -18,7 +18,25 @@ ES_DIR = Path(SDK) / "usr/include/EndpointSecurity"
 OUT_DIR = Path(__file__).parent / "generated"
 OUT_DIR.mkdir(exist_ok=True)
 
-HEADERS = ["ESTypes.h", "ESMessageCore.h", "ESMessage.h"]
+HEADERS = ["ESTypes.h", "ESMessage.h", "ESClient.h"]
+
+
+def read_header(name: str, seen: set = None) -> str:
+    """Read a header and inline any EndpointSecurity-local #include directives."""
+    if seen is None:
+        seen = set()
+    if name in seen:
+        return ""
+    seen.add(name)
+    content = (ES_DIR / name).read_text()
+
+    def inline(m):
+        included = m.group(1)
+        if (ES_DIR / included).exists():
+            return read_header(included, seen)
+        return m.group(0)
+
+    return re.sub(r'#include\s*<EndpointSecurity/([^>]+)>', inline, content)
 
 
 # ─── Comment parsing ──────────────────────────────────────────────────────────
@@ -377,7 +395,7 @@ def _parse_events_union_body(body: str) -> dict:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    contents = {h: (ES_DIR / h).read_text() for h in HEADERS}
+    contents = {h: read_header(h) for h in HEADERS}
 
     # Events
     events = parse_event_types(contents["ESTypes.h"])
