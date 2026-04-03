@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>ES API Parser — Endpoint Security Reference</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Dark theme (default) ──────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg: #1e1e1e; --bg2: #252526; --bg3: #2d2d2d;
+  --border: #3e3e42; --border-subtle: #2a2a2a;
+  --text: #cccccc; --text2: #888; --text3: #555; --text-bright: #ffffff;
+  --sel: #094771; --sel-text: #fff;
+  --accent-blue: #4fc1ff; --accent-purple: #c586c0;
+  --accent-green: #4ec9b0; --accent-yellow: #dcdcaa;
+  --badge-auth: #5a1d1d; --badge-auth-text: #f97171;
+  --badge-notify: #1a3a1a; --badge-notify-text: #7dc97d;
+  --badge-ver: #1a2a3a; --badge-ver-text: #4fc1ff;
+  --badge-reserved: #2a2a00; --badge-reserved-text: #cccc44;
+  --type-link-hover: #e0a0ff;
+  --note-border: #444;
+}
+
+/* ─── Light theme ────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg: #f8f8f8; --bg2: #efefef; --bg3: #e4e4e4;
+  --border: #d0d0d0; --border-subtle: #e0e0e0;
+  --text: #1a1a1a; --text2: #555; --text3: #999; --text-bright: #000000;
+  --sel: #0078d4; --sel-text: #fff;
+  --accent-blue: #0066cc; --accent-purple: #7b3ea0;
+  --accent-green: #1b7a6e; --accent-yellow: #7a6400;
+  --badge-auth: #ffe5e5; --badge-auth-text: #bb0000;
+  --badge-notify: #e5ffe5; --badge-notify-text: #005500;
+  --badge-ver: #e0f0ff; --badge-ver-text: #0055aa;
+  --badge-reserved: #fffadc; --badge-reserved-text: #7a6200;
+  --type-link-hover: #5a0090;
+  --note-border: #bbb;
+}
+
+/* ─── Auto theme ─────────────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --bg: #f8f8f8; --bg2: #efefef; --bg3: #e4e4e4;
+    --border: #d0d0d0; --border-subtle: #e0e0e0;
+    --text: #1a1a1a; --text2: #555; --text3: #999; --text-bright: #000000;
+    --sel: #0078d4; --sel-text: #fff;
+    --accent-blue: #0066cc; --accent-purple: #7b3ea0;
+    --accent-green: #1b7a6e; --accent-yellow: #7a6400;
+    --badge-auth: #ffe5e5; --badge-auth-text: #bb0000;
+    --badge-notify: #e5ffe5; --badge-notify-text: #005500;
+    --badge-ver: #e0f0ff; --badge-ver-text: #0055aa;
+    --badge-reserved: #fffadc; --badge-reserved-text: #7a6200;
+    --type-link-hover: #5a0090;
+    --note-border: #bbb;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --bg: #1e1e1e; --bg2: #252526; --bg3: #2d2d2d;
+    --border: #3e3e42; --border-subtle: #2a2a2a;
+    --text: #cccccc; --text2: #888; --text3: #555; --text-bright: #ffffff;
+    --sel: #094771; --sel-text: #fff;
+    --accent-blue: #4fc1ff; --accent-purple: #c586c0;
+    --accent-green: #4ec9b0; --accent-yellow: #dcdcaa;
+    --badge-auth: #5a1d1d; --badge-auth-text: #f97171;
+    --badge-notify: #1a3a1a; --badge-notify-text: #7dc97d;
+    --badge-ver: #1a2a3a; --badge-ver-text: #4fc1ff;
+    --badge-reserved: #2a2a00; --badge-reserved-text: #cccc44;
+    --type-link-hover: #e0a0ff;
+    --note-border: #444;
+  }
+}
+
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ─── Toolbar ─────────────────────────────────────────────────────── */
+#toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; position: relative;
+}
+.logo { font-weight: 700; font-size: 13px; color: var(--accent-blue); white-space: nowrap; margin-right: 2px; }
+#search {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 13px; outline: none;
+}
+#search:focus { border-color: var(--accent-blue); }
+.filter-btn {
+  padding: 3px 9px; border: 1px solid var(--border); background: transparent;
+  color: var(--text2); border-radius: 4px; cursor: pointer; font-size: 11px;
+  font-weight: 600; transition: color 0.1s, border-color 0.1s, background 0.1s; white-space: nowrap;
+}
+.filter-btn.active { color: var(--accent-blue); border-color: var(--accent-blue); background: var(--badge-ver); }
+.filter-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+.ver-group { display: flex; align-items: center; gap: 5px; color: var(--text2); font-size: 11px; white-space: nowrap; }
+#ver-slider { width: 70px; accent-color: var(--accent-blue); }
+#ver-num { color: var(--accent-blue); font-weight: 600; min-width: 18px; }
+
+/* ─── Prefs button & panel ────────────────────────────────────────── */
+#prefs-wrap { position: relative; }
+#btn-prefs { font-size: 14px; line-height: 1; padding: 3px 7px; }
+.prefs-panel {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px; z-index: 200; min-width: 200px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.prefs-panel.open { display: block; }
+.pref-row { margin-bottom: 12px; }
+.pref-row:last-child { margin-bottom: 0; }
+.pref-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 6px; }
+.pref-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.pref-btn {
+  padding: 3px 10px; border: 1px solid var(--border); background: var(--bg3);
+  color: var(--text2); border-radius: 4px; cursor: pointer; font-size: 11px;
+}
+.pref-btn.active { border-color: var(--accent-blue); color: var(--accent-blue); background: var(--badge-ver); }
+.pref-btn:hover:not(.active) { border-color: var(--text3); color: var(--text); }
+
+/* ─── Main layout ─────────────────────────────────────────────────── */
+#body { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── Sidebar ─────────────────────────────────────────────────────── */
+#sidebar { width: 270px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; }
+.section-hdr {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 10px 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  cursor: pointer; position: sticky; top: 0; z-index: 1; user-select: none;
+}
+.section-hdr span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); }
+.section-hdr .count { font-size: 10px; color: var(--text3); font-weight: 400; }
+.section-hdr .arrow { font-size: 10px; color: var(--text3); transition: transform 0.15s; }
+.section-hdr.collapsed .arrow { transform: rotate(-90deg); }
+.section-body.collapsed { display: none; }
+
+.sb-item {
+  padding: 5px 12px; cursor: pointer; border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: 5px; overflow: hidden;
+  color: var(--text); line-height: 1.4;
+}
+.sb-item:hover { background: var(--bg3); }
+.sb-item.active { background: var(--sel); color: var(--sel-text); }
+.sb-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'SF Mono', 'Menlo', monospace; font-size: 12px; }
+.sb-item .badges { display: flex; gap: 3px; flex-shrink: 0; }
+.badge {
+  font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px;
+  font-family: -apple-system, sans-serif; letter-spacing: 0.3px; white-space: nowrap;
+}
+.badge-auth     { background: var(--badge-auth);     color: var(--badge-auth-text); }
+.badge-notify   { background: var(--badge-notify);   color: var(--badge-notify-text); }
+.badge-ver      { background: var(--badge-ver);      color: var(--badge-ver-text); }
+.badge-reserved { background: var(--badge-reserved); color: var(--badge-reserved-text); }
+.macos { font-size: 10px; color: var(--text3); flex-shrink: 0; margin-left: auto; padding-left: 4px; }
+
+/* ─── Detail pane ─────────────────────────────────────────────────── */
+#detail { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.placeholder { color: var(--text3); text-align: center; margin-top: 60px; font-size: 14px; line-height: 1.8; }
+
+.detail-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.detail-title { font-family: 'SF Mono', 'Menlo', monospace; font-size: 17px; font-weight: 600; color: var(--text-bright); }
+.apple-docs-link {
+  font-size: 11px; color: var(--text3); text-decoration: none; border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+}
+.apple-docs-link:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+
+.detail-brief { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 16px; max-width: 720px; }
+.event-tags { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.event-tag { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--text2); background: var(--bg3); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); }
+.macos-tag { font-size: 11px; color: var(--text3); }
+
+.fields-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px; }
+.fields-table th { text-align: left; padding: 5px 10px; color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); font-weight: 600; }
+.fields-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+.fields-table tr:hover td { background: var(--bg3); }
+.field-name { font-family: 'SF Mono', 'Menlo', monospace; color: var(--accent-blue); }
+.field-type { font-family: 'SF Mono', 'Menlo', monospace; color: var(--accent-purple); }
+.type-link { font-family: 'SF Mono', 'Menlo', monospace; color: var(--accent-purple); cursor: pointer; text-decoration: underline; text-decoration-color: var(--text3); text-underline-offset: 2px; }
+.type-link:hover { color: var(--type-link-hover); }
+.field-doc { color: var(--text2); line-height: 1.5; max-width: 400px; font-size: 12px; }
+.field-dimmed { opacity: 0.25; }
+.union-mark { font-size: 10px; color: var(--text3); margin-left: 3px; }
+
+.values-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px; }
+.values-table th { text-align: left; padding: 5px 10px; color: var(--text3); font-size: 10px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-weight: 600; }
+.values-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+.values-table tr:hover td { background: var(--bg3); }
+.val-name { font-family: 'SF Mono', 'Menlo', monospace; color: var(--accent-green); font-size: 12px; }
+.val-num { font-family: 'SF Mono', 'Menlo', monospace; color: var(--text3); }
+.val-doc { color: var(--text2); }
+
+.notes-section { margin-top: 4px; }
+.note { background: var(--bg2); border-left: 3px solid var(--note-border); padding: 8px 12px; margin-bottom: 8px; font-size: 12px; color: var(--text2); border-radius: 0 3px 3px 0; line-height: 1.6; max-width: 720px; }
+.reserved-note { background: var(--badge-reserved); border-left: 3px solid var(--badge-reserved-text); color: var(--badge-reserved-text); padding: 8px 12px; border-radius: 0 3px 3px 0; font-size: 12px; margin-bottom: 14px; max-width: 720px; }
+
+/* ─── macOS filter ────────────────────────────────────────────────── */
+#macos-filter {
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); padding: 3px 6px; border-radius: 4px;
+  font-size: 11px; cursor: pointer; outline: none;
+}
+#macos-filter:focus { border-color: var(--accent-blue); color: var(--text); }
+
+/* ─── Class view button & grouping ───────────────────────────────── */
+.class-view-btn {
+  font-size: 10px; padding: 1px 5px; border: 1px solid transparent;
+  background: transparent; color: var(--text3); border-radius: 3px;
+  cursor: pointer; margin-left: 5px; font-weight: 700; vertical-align: middle;
+}
+.class-view-btn.active { color: var(--accent-blue); border-color: var(--accent-blue); background: var(--badge-ver); }
+.class-view-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+.class-sec-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 12px; background: var(--bg2); border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer; user-select: none; position: sticky; top: 28px; z-index: 1;
+}
+.class-sec-hdr:hover { background: var(--bg3); }
+.class-sec-name { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; }
+.class-sec-count { font-size: 10px; color: var(--text3); margin-left: 4px; font-weight: 400; }
+.class-sec-arrow { font-size: 9px; color: var(--text3); transition: transform 0.15s; }
+.class-sec-hdr.collapsed .class-sec-arrow { transform: rotate(-90deg); }
+
+/* ─── Source view ─────────────────────────────────────────────────── */
+.src-toggle-btn {
+  font-size: 10px; font-family: 'SF Mono', monospace; padding: 2px 8px;
+  border: 1px solid var(--border); background: transparent; color: var(--text3);
+  border-radius: 3px; cursor: pointer; margin-left: auto; flex-shrink: 0;
+}
+.src-toggle-btn.active { color: var(--accent-green); border-color: var(--accent-green); }
+.src-toggle-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+.source-view {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px 16px; overflow-x: auto; font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 12px; line-height: 1.65; color: var(--text); white-space: pre; max-width: 100%;
+  margin-bottom: 16px; tab-size: 4;
+}
+.src-comment { color: var(--text3); }
+.src-kw { color: var(--accent-purple); }
+.src-type { color: var(--accent-green); }
+.no-src { color: var(--text3); font-size: 12px; font-style: italic; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <span class="logo">ES API Parser</span>
+    <input id="search" type="text" placeholder="Search events, structs, fields, enums, ES_EVENT_TYPE_…" autocomplete="off" spellcheck="false">
+    <button class="filter-btn active" id="btn-auth">AUTH</button>
+    <button class="filter-btn active" id="btn-notify">NOTIFY</button>
+    <button class="filter-btn" id="btn-reserved">RSVD</button>
+    <div class="ver-group">
+      msg v≥<span id="ver-num">–</span>
+      <input id="ver-slider" type="range" min="1" max="10" value="10">
+    </div>
+    <select id="macos-filter" title="Filter events by macOS availability">
+      <option value="">All macOS</option>
+    </select>
+    <div id="prefs-wrap">
+      <button class="filter-btn" id="btn-prefs" title="Preferences">⚙</button>
+      <div class="prefs-panel" id="prefs-panel">
+        <div class="pref-row">
+          <div class="pref-label">Appearance</div>
+          <div class="pref-btns" id="pref-theme">
+            <button class="pref-btn active" data-val="dark">Dark</button>
+            <button class="pref-btn" data-val="light">Light</button>
+            <button class="pref-btn" data-val="auto">Auto</button>
+          </div>
+        </div>
+        <div class="pref-row">
+          <div class="pref-label">UI Scale</div>
+          <div class="pref-btns" id="pref-scale">
+            <button class="pref-btn" data-val="80">80%</button>
+            <button class="pref-btn" data-val="90">90%</button>
+            <button class="pref-btn active" data-val="100">100%</button>
+            <button class="pref-btn" data-val="115">115%</button>
+            <button class="pref-btn" data-val="130">130%</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="body">
+    <nav id="sidebar"></nav>
+    <main id="detail"><p class="placeholder">Select an item from the sidebar, or search.</p></main>
+  </div>
+</div>
+
+<script src="generated/esvis-data.js"></script>
+<script>
+if (!window.ESVIS_DATA) {
+  document.getElementById('detail').innerHTML =
+    '<p class="placeholder">⚠ generated/esvis-data.js not found.<br>Run <code>python3 parse.py</code> first.</p>';
+}
+
+const D = window.ESVIS_DATA || {events:[], structs:{}, enums:{}};
+
+// ─── Telemetry classification ─────────────────────────────────────────────────
+const TELEMETRY_CLASSES = {
+  'Process':             ['exec','fork','exit','get_task','remote_thread_create','proc_check','proc_suspend_resume','chroot','setuid','setgid','setegid','seteuid','setreuid','setregid','setresuid','setresgid','signal','cs_invalidated'],
+  'Interprocess':        ['trace','ptrace'],
+  'Memory':              ['mmap','mprotect'],
+  'I/O Kit':             ['iokit_open'],
+  'Kernel Extensions':   ['kextload','kextunload'],
+  'Task Port':           ['task_name_to_task_port'],
+  'File System':         ['open','close','create','write','truncate','exchangedata','clone','copyfile','delete','rename','fcntl','lookup','searchfs'],
+  'File Metadata':       ['setattr','getattr','stat','access','setattrlist','getattrlist','setflags','setmode','setowner','settime','readdir','chdir'],
+  'Extended Attributes': ['getextattr','setextattr','listextattr','deleteextattr'],
+  'Link':                ['link','symlink','readlink','unlink'],
+  'Mounting':            ['mount','unmount','remount'],
+  'Pseudo-terminal':     ['pty_grant','pty_close'],
+  'File Provider':       ['file_provider_materialize','file_provider_delete_item','file_provider_update_claims'],
+  'Socket':              ['uipc_bind','uipc_connect','bind','connect','listen','accept','sendmsg','recvmsg'],
+  'XPC':                 ['xpc_connect'],
+  'Service Management':  ['sm_enable_legacy_tool','sm_install_service','sm_uninstall_service','sm_enable_service','sm_disable_service'],
+  'Login / Session':     ['lw_session_login','lw_session_logout','lw_session_lock','lw_session_unlock','login_login','login_logout','screensharing_attach','screensharing_detach'],
+  'OpenSSH':             ['openssh_login','openssh_logout'],
+  'MDM':                 ['profile_add','profile_remove'],
+  'XProtect':            ['xp_malware_detected','xp_malware_remediated'],
+  'TCC':                 ['tcc_access'],
+  'Gatekeeper':          ['gatekeeper_user_override'],
+  'OpenDirectory':       ['od_group_add','od_group_remove','od_group_set','od_modify_password','od_disable_user','od_enable_user','od_attribute_value_add','od_attribute_value_remove','od_create_user','od_create_group','od_delete_user','od_delete_group'],
+  'Authorization':       ['authorization_petition','authorization_judgement'],
+  'Launch Items':        ['btm_launch_item_add','btm_launch_item_remove','btm_set_item_active'],
+  'sudo':                ['sudo'],
+  'Authentication':      ['authentication'],
+};
+const catToClass = {};
+for (const [cls, cats] of Object.entries(TELEMETRY_CLASSES))
+  for (const cat of cats) catToClass[cat] = cls;
+
+// ─── Compute max message version from data ────────────────────────────────────
+let maxVersion = 1;
+for (const s of Object.values(D.structs))
+  for (const f of s.fields)
+    if (f.sinceVersion && f.sinceVersion > maxVersion) maxVersion = f.sinceVersion;
+const verSlider = document.getElementById('ver-slider');
+const verNum    = document.getElementById('ver-num');
+verSlider.max   = maxVersion;
+verSlider.value = maxVersion;
+verNum.textContent = maxVersion;
+
+// ─── Build event categories ───────────────────────────────────────────────────
+const eventCats = {};
+for (const e of D.events) {
+  if (!eventCats[e.category]) {
+    eventCats[e.category] = {
+      category:      e.category,
+      actions:       new Set(),
+      fullNames:     [],
+      macosVersion:  e.macosVersion,
+      struct:        e.struct,
+      isReserved:    e.action === 'RESERVED',
+      telemetryClass: catToClass[e.category] || 'Other',
+    };
+  }
+  eventCats[e.category].actions.add(e.action);
+  eventCats[e.category].fullNames.push(e.name);
+}
+const sortedCats    = Object.values(eventCats).sort((a,b) => a.category.localeCompare(b.category));
+const sortedStructs = Object.keys(D.structs).sort();
+const sortedEnums   = Object.keys(D.enums).sort();
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+  query:           '',
+  showAuth:        true,
+  showNotify:      true,
+  showReserved:    false,
+  minVersion:      maxVersion,
+  minMacOS:        '',
+  classView:       false,
+  collapsedClasses: new Set(),
+  showSource:      false,
+  selected:        null,
+};
+
+// ─── Search matching ──────────────────────────────────────────────────────────
+function matchStr(s, q) { return s && String(s).toLowerCase().includes(q); }
+
+function structScore(name, q) {
+  const s = D.structs[name];
+  if (!s) return 0;
+  if (matchStr(name, q) || matchStr(s.brief, q)) return 2;
+  if (s.fields.some(f => matchStr(f.name, q) || matchStr(f.type, q) || matchStr(f.doc, q))) return 1;
+  return 0;
+}
+
+function catMatches(cat, q) {
+  if (!q) return true;
+  if (matchStr(cat.category, q)) return true;
+  if (cat.fullNames.some(n => matchStr(n, q))) return true;
+  if (cat.struct && structScore(cat.struct, q) > 0) return true;
+  if (matchStr(cat.macosVersion, q)) return true;
+  return false;
+}
+
+function structMatches(name, q) {
+  if (!q) return true;
+  return structScore(name, q) > 0;
+}
+
+function enumMatches(name, q) {
+  if (!q) return true;
+  const e = D.enums[name];
+  if (!e) return false;
+  if (matchStr(name, q) || matchStr(e.brief, q)) return true;
+  return e.values.some(v => matchStr(v.name, q) || matchStr(v.doc, q));
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function compareMacOS(a, b) {
+  const ap = (a || '0').split('.').map(Number);
+  const bp = (b || '0').split('.').map(Number);
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    const d = (ap[i] || 0) - (bp[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+function highlightSource(raw) {
+  const KW = new Set(['typedef','struct','union','enum','const','bool','void','true','false','_Nonnull','_Nullable','_Bool']);
+  const out = [];
+  let i = 0;
+  const n = raw.length;
+  while (i < n) {
+    if (raw[i] === '/' && i+1 < n && raw[i+1] === '*') {
+      const end = raw.indexOf('*/', i+2);
+      const seg = end === -1 ? raw.slice(i) : raw.slice(i, end+2);
+      out.push(`<span class="src-comment">${esc(seg)}</span>`);
+      i = end === -1 ? n : end+2;
+    } else if (raw[i] === '/' && i+1 < n && raw[i+1] === '/') {
+      let end = raw.indexOf('\n', i);
+      if (end === -1) end = n;
+      out.push(`<span class="src-comment">${esc(raw.slice(i, end))}</span>`);
+      i = end;
+    } else if (/[a-zA-Z_]/.test(raw[i])) {
+      let j = i;
+      while (j < n && /\w/.test(raw[j])) j++;
+      const word = raw.slice(i, j);
+      if (KW.has(word)) {
+        out.push(`<span class="src-kw">${esc(word)}</span>`);
+      } else if (/^[a-z]\w*_t$/.test(word) || word.startsWith('es_') || word.startsWith('audit_') || word.startsWith('mach_')) {
+        out.push(`<span class="src-type">${esc(word)}</span>`);
+      } else {
+        out.push(esc(word));
+      }
+      i = j;
+    } else {
+      out.push(esc(raw[i]));
+      i++;
+    }
+  }
+  return out.join('');
+}
+
+// ─── Apple docs helper ────────────────────────────────────────────────────────
+function appleDocsUrl(name) {
+  if (!name || !name.startsWith('es_')) return null;
+  return `https://developer.apple.com/documentation/endpointsecurity/${name.toLowerCase()}`;
+}
+
+function appleDocsAnchor(name) {
+  const url = appleDocsUrl(name);
+  if (!url) return '';
+  return `<a href="${url}" target="_blank" rel="noopener" class="apple-docs-link">Apple Docs ↗</a>`;
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+let collapsedSections = new Set();
+
+function catItem(cat) {
+  const active = state.selected?.kind === 'event' && state.selected?.name === cat.category;
+  const badges = cat.isReserved
+    ? '<span class="badge badge-reserved">RSVD</span>'
+    : [...cat.actions].sort().map(a => `<span class="badge badge-${a.toLowerCase()}">${a}</span>`).join('');
+  const ver = cat.macosVersion ? `<span class="macos">${cat.macosVersion}</span>` : '';
+  return `<div class="sb-item${active?' active':''}" data-kind="event" data-name="${esc(cat.category)}">
+    <span class="name">${esc(cat.category)}</span>
+    <span class="badges">${badges}</span>${ver}
+  </div>`;
+}
+
+function renderSidebar() {
+  const q  = state.query.toLowerCase();
+  const sb = document.getElementById('sidebar');
+  const parts = [];
+
+  const visibleCats = sortedCats.filter(cat => {
+    if (!catMatches(cat, q)) return false;
+    if (cat.isReserved) return state.showReserved || !!q;
+    const hasAuth   = cat.actions.has('AUTH');
+    const hasNotify = cat.actions.has('NOTIFY');
+    if (!state.showAuth   && hasAuth   && !hasNotify) return false;
+    if (!state.showNotify && hasNotify && !hasAuth)   return false;
+    if (!state.showAuth && !state.showNotify)          return false;
+    if (state.minMacOS && compareMacOS(cat.macosVersion, state.minMacOS) > 0) return false;
+    return true;
+  });
+
+  const classBtn = `<button class="class-view-btn${state.classView?' active':''}" id="btn-class-view" title="Group by telemetry class">⊞</button>`;
+  const evCollapsed = collapsedSections.has('events');
+  parts.push(sectionHdr('events', 'Events', visibleCats.length, evCollapsed, classBtn));
+  if (!evCollapsed) {
+    parts.push('<div class="section-body">');
+    if (state.classView) {
+      const classCats = {};
+      for (const cat of visibleCats) {
+        const cls = cat.telemetryClass || 'Other';
+        (classCats[cls] = classCats[cls] || []).push(cat);
+      }
+      const classOrder = Object.keys(TELEMETRY_CLASSES).filter(c => classCats[c]);
+      if (classCats['Other']) classOrder.push('Other');
+      for (const cls of classOrder) {
+        const cats = classCats[cls];
+        const collapsed = state.collapsedClasses.has(cls);
+        parts.push(`<div class="class-sec-hdr${collapsed?' collapsed':''}" data-class="${esc(cls)}">
+          <span><span class="class-sec-name">${esc(cls)}</span> <span class="class-sec-count">${cats.length}</span></span>
+          <span class="class-sec-arrow">▾</span>
+        </div>`);
+        if (!collapsed) for (const cat of cats) parts.push(catItem(cat));
+      }
+    } else {
+      for (const cat of visibleCats) parts.push(catItem(cat));
+    }
+    parts.push('</div>');
+  }
+
+  const visibleStructs = sortedStructs.filter(n => structMatches(n, q));
+  const stCollapsed = collapsedSections.has('structs');
+  parts.push(sectionHdr('structs', 'Structs', visibleStructs.length, stCollapsed));
+  if (!stCollapsed) {
+    parts.push('<div class="section-body">');
+    for (const name of visibleStructs) {
+      const active = state.selected?.kind === 'struct' && state.selected?.name === name;
+      parts.push(`<div class="sb-item${active?' active':''}" data-kind="struct" data-name="${esc(name)}">
+        <span class="name">${esc(name)}</span>
+      </div>`);
+    }
+    parts.push('</div>');
+  }
+
+  const visibleEnums = sortedEnums.filter(n => enumMatches(n, q));
+  const enCollapsed = collapsedSections.has('enums');
+  parts.push(sectionHdr('enums', 'Enums', visibleEnums.length, enCollapsed));
+  if (!enCollapsed) {
+    parts.push('<div class="section-body">');
+    for (const name of visibleEnums) {
+      const active = state.selected?.kind === 'enum' && state.selected?.name === name;
+      parts.push(`<div class="sb-item${active?' active':''}" data-kind="enum" data-name="${esc(name)}">
+        <span class="name">${esc(name)}</span>
+      </div>`);
+    }
+    parts.push('</div>');
+  }
+
+  sb.innerHTML = parts.join('');
+  sb.querySelectorAll('.sb-item').forEach(el =>
+    el.addEventListener('click', () => navigate(el.dataset.kind, el.dataset.name))
+  );
+  sb.querySelectorAll('.section-hdr').forEach(el =>
+    el.addEventListener('click', () => {
+      const id = el.dataset.section;
+      collapsedSections.has(id) ? collapsedSections.delete(id) : collapsedSections.add(id);
+      renderSidebar();
+    })
+  );
+  sb.querySelectorAll('.class-sec-hdr').forEach(el =>
+    el.addEventListener('click', () => {
+      const cls = el.dataset.class;
+      state.collapsedClasses.has(cls) ? state.collapsedClasses.delete(cls) : state.collapsedClasses.add(cls);
+      renderSidebar();
+    })
+  );
+  sb.querySelector('#btn-class-view')?.addEventListener('click', e => {
+    e.stopPropagation();
+    state.classView = !state.classView;
+    renderSidebar();
+  });
+}
+
+function sectionHdr(id, label, count, collapsed, extra = '') {
+  return `<div class="section-hdr${collapsed?' collapsed':''}" data-section="${id}">
+    <span>${label} <span class="count">${count}</span>${extra}</span>
+    <span class="arrow">▾</span>
+  </div>`;
+}
+
+// ─── Detail pane ──────────────────────────────────────────────────────────────
+function renderDetail() {
+  const el = document.getElementById('detail');
+  if (!state.selected) {
+    el.innerHTML = '<p class="placeholder">Select an item from the sidebar, or search.</p>';
+    return;
+  }
+  const { kind, name } = state.selected;
+  if      (kind === 'event')  el.innerHTML = renderEvent(name);
+  else if (kind === 'struct') el.innerHTML = renderStruct(name);
+  else if (kind === 'enum')   el.innerHTML = renderEnum(name);
+
+  el.querySelectorAll('.type-link').forEach(a =>
+    a.addEventListener('click', () => {
+      const ref = a.dataset.ref;
+      navigate(D.structs[ref] ? 'struct' : 'enum', ref);
+    })
+  );
+  el.querySelector('#src-toggle')?.addEventListener('click', () => {
+    state.showSource = !state.showSource;
+    renderDetail();
+  });
+}
+
+function renderEvent(category) {
+  const cat = eventCats[category];
+  if (!cat) return '<p class="placeholder">Event not found.</p>';
+  const parts = [];
+
+  parts.push('<div class="detail-header">');
+  parts.push(`<span class="detail-title">${esc(category)}</span>`);
+  if (cat.macosVersion) parts.push(`<span class="macos-tag">macOS ${esc(cat.macosVersion)}+</span>`);
+  parts.push('</div>');
+
+  if (cat.isReserved) {
+    parts.push('<div class="reserved-note">This is an undocumented / reserved event type. No public struct definition is available.</div>');
+  }
+
+  parts.push('<div class="event-tags">');
+  for (const fullName of cat.fullNames.sort()) {
+    parts.push(`<span class="event-tag">${esc(fullName)}</span>`);
+  }
+  parts.push('</div>');
+
+  if (!cat.isReserved && cat.struct && D.structs[cat.struct]) {
+    parts.push(`<p class="detail-brief">Struct: <span class="type-link" data-ref="${esc(cat.struct)}">${esc(cat.struct)}</span> ${appleDocsAnchor(cat.struct)}</p>`);
+    parts.push(renderStructBody(cat.struct));
+  } else if (!cat.isReserved && cat.struct) {
+    parts.push(`<p class="detail-brief">Struct: <span class="field-type">${esc(cat.struct)}</span> ${appleDocsAnchor(cat.struct)}</p>`);
+  } else if (!cat.isReserved) {
+    parts.push('<p class="detail-brief" style="color:var(--text3)">No struct associated with this event type.</p>');
+  }
+
+  return parts.join('');
+}
+
+function renderStruct(name) {
+  const s = D.structs[name];
+  if (!s) return '<p class="placeholder">Struct not found.</p>';
+  const parts = [];
+  parts.push('<div class="detail-header">');
+  parts.push(`<span class="detail-title">${esc(name)}</span>`);
+  parts.push(appleDocsAnchor(name));
+  parts.push(`<button class="src-toggle-btn${state.showSource?' active':''}" id="src-toggle">&lt;/&gt;</button>`);
+  parts.push('</div>');
+  if (state.showSource) {
+    parts.push(renderSource(name, 'struct'));
+  } else {
+    if (s.brief) parts.push(`<p class="detail-brief">${esc(s.brief)}</p>`);
+    parts.push(renderStructBody(name));
+  }
+  return parts.join('');
+}
+
+function renderStructBody(name) {
+  const s = D.structs[name];
+  if (!s) return '';
+  const minV  = state.minVersion;
+  const parts = [];
+
+  if (!s.fields.length) {
+    parts.push('<p style="color:var(--text3);font-size:12px;margin-bottom:16px;">No public fields (opaque or reserved struct).</p>');
+  } else {
+    parts.push(`<table class="fields-table">
+      <tr><th>Field</th><th>Type</th><th>Doc</th></tr>`);
+    for (const f of s.fields) {
+      const dimmed    = f.sinceVersion && f.sinceVersion > minV;
+      const verBadge  = f.sinceVersion ? `<span class="badge badge-ver">v≥${f.sinceVersion}</span> ` : '';
+      const unionMark = f.inUnion ? '<span class="union-mark" title="Inside union">⊂</span>' : '';
+      const typeCell  = (f.typeRef && (D.structs[f.typeRef] || D.enums[f.typeRef]))
+        ? `<span class="type-link" data-ref="${esc(f.typeRef)}">${esc(f.type)}</span>`
+        : `<span class="field-type">${esc(f.type)}</span>`;
+      parts.push(`<tr${dimmed?' class="field-dimmed"':''}>
+        <td><span class="field-name">${esc(f.name)}</span>${unionMark}</td>
+        <td>${verBadge}${typeCell}</td>
+        <td><span class="field-doc">${esc(f.doc)}</span></td>
+      </tr>`);
+    }
+    parts.push('</table>');
+  }
+
+  if (s.notes?.length) {
+    parts.push('<div class="notes-section">');
+    for (const n of s.notes) parts.push(`<div class="note">${esc(n)}</div>`);
+    parts.push('</div>');
+  }
+  return parts.join('');
+}
+
+function renderEnum(name) {
+  const e = D.enums[name];
+  if (!e) return '<p class="placeholder">Enum not found.</p>';
+  const parts = [];
+  parts.push('<div class="detail-header">');
+  parts.push(`<span class="detail-title">${esc(name)}</span>`);
+  parts.push(appleDocsAnchor(name));
+  parts.push(`<button class="src-toggle-btn${state.showSource?' active':''}" id="src-toggle">&lt;/&gt;</button>`);
+  parts.push('</div>');
+  if (state.showSource) {
+    parts.push(renderSource(name, 'enum'));
+  } else {
+    if (e.brief) parts.push(`<p class="detail-brief">${esc(e.brief)}</p>`);
+    parts.push(`<table class="values-table"><tr><th>Name</th><th>#</th><th>Doc</th></tr>`);
+    for (const v of e.values) {
+      parts.push(`<tr>
+        <td><span class="val-name">${esc(v.name)}</span></td>
+        <td><span class="val-num">${v.value}</span></td>
+        <td><span class="val-doc">${esc(v.doc)}</span></td>
+      </tr>`);
+    }
+    parts.push('</table>');
+    if (e.notes?.length) {
+      parts.push('<div class="notes-section">');
+      for (const n of e.notes) parts.push(`<div class="note">${esc(n)}</div>`);
+      parts.push('</div>');
+    }
+  }
+  return parts.join('');
+}
+
+function renderSource(name, kind) {
+  const item = kind === 'struct' ? D.structs[name] : D.enums[name];
+  if (!item?.source) return '<p class="no-src">Source not available — re-run <code>python3 parse.py</code> to generate source data.</p>';
+  return `<pre class="source-view"><code>${highlightSource(item.source)}</code></pre>`;
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function navigate(kind, name) {
+  state.selected = { kind, name };
+  state.showSource = false;
+  history.pushState({ kind, name }, '', `#${kind}:${encodeURIComponent(name)}`);
+  renderSidebar();
+  renderDetail();
+  requestAnimationFrame(() => {
+    document.querySelector('.sb-item.active')?.scrollIntoView({ block: 'nearest' });
+    document.getElementById('detail').scrollTop = 0;
+  });
+}
+
+window.addEventListener('popstate', e => {
+  state.selected = e.state || null;
+  renderSidebar(); renderDetail();
+});
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', e => {
+  state.query = e.target.value;
+  renderSidebar();
+});
+
+function toggleFilter(btn, stateKey) {
+  btn.classList.toggle('active');
+  state[stateKey] = btn.classList.contains('active');
+  renderSidebar();
+}
+
+document.getElementById('btn-auth').addEventListener('click', function() { toggleFilter(this, 'showAuth'); });
+document.getElementById('btn-notify').addEventListener('click', function() { toggleFilter(this, 'showNotify'); });
+document.getElementById('btn-reserved').addEventListener('click', function() { toggleFilter(this, 'showReserved'); });
+
+verSlider.addEventListener('input', function() {
+  state.minVersion = +this.value;
+  verNum.textContent = this.value;
+  renderDetail();
+});
+
+const macosFilter = document.getElementById('macos-filter');
+macosFilter.addEventListener('change', function() {
+  state.minMacOS = this.value;
+  renderSidebar();
+});
+
+// ─── Preferences ─────────────────────────────────────────────────────────────
+const prefs = {
+  theme: localStorage.getItem('esap-theme') || 'dark',
+  scale: parseInt(localStorage.getItem('esap-scale') || '100', 10),
+};
+
+function applyPrefs() {
+  document.documentElement.setAttribute('data-theme', prefs.theme);
+  document.getElementById('app').style.zoom = prefs.scale / 100;
+  // Update pref buttons
+  document.querySelectorAll('#pref-theme .pref-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val === prefs.theme));
+  document.querySelectorAll('#pref-scale .pref-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.val === prefs.scale));
+}
+
+document.getElementById('btn-prefs').addEventListener('click', e => {
+  document.getElementById('prefs-panel').classList.toggle('open');
+  e.stopPropagation();
+});
+
+document.addEventListener('click', () => document.getElementById('prefs-panel').classList.remove('open'));
+document.getElementById('prefs-panel').addEventListener('click', e => e.stopPropagation());
+
+document.querySelectorAll('#pref-theme .pref-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    prefs.theme = btn.dataset.val;
+    localStorage.setItem('esap-theme', prefs.theme);
+    applyPrefs();
+  })
+);
+
+document.querySelectorAll('#pref-scale .pref-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    prefs.scale = +btn.dataset.val;
+    localStorage.setItem('esap-scale', prefs.scale);
+    applyPrefs();
+  })
+);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Restore from URL hash ────────────────────────────────────────────────────
+function restoreFromHash() {
+  const hash = location.hash.slice(1);
+  if (!hash) return;
+  const colon = hash.indexOf(':');
+  if (colon === -1) return;
+  const kind = hash.slice(0, colon);
+  const name = decodeURIComponent(hash.slice(colon + 1));
+  if ((kind === 'event'  && eventCats[name]) ||
+      (kind === 'struct' && D.structs[name]) ||
+      (kind === 'enum'   && D.enums[name])) {
+    state.selected = { kind, name };
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+// Populate macOS filter options
+{
+  const versions = [...new Set(D.events.map(e => e.macosVersion).filter(Boolean))].sort(compareMacOS);
+  for (const v of versions) {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = `macOS ${v}`;
+    macosFilter.appendChild(opt);
+  }
+}
+
+applyPrefs();
+restoreFromHash();
+renderSidebar();
+renderDetail();
+</script>
+</body>
+</html>

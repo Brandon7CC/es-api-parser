@@ -1,0 +1,15 @@
+# Generated data files — run parse.py to create these
+generated/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
