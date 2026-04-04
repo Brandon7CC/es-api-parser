@@ -9,8 +9,8 @@ Options:
     --sdk-path PATH   Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun.
                       If omitted, the active Xcode SDK is used via xcrun.
 
-Output is written to generated/ relative to this script.
-Sitemap is written to sitemap.xml at the repo root.
+Output is written to serve/generated/ relative to this script.
+Sitemap and robots.txt are written to serve/ relative to this script.
 """
 
 import re
@@ -565,8 +565,9 @@ def main():
         sdk = subprocess.check_output(["xcrun", "--show-sdk-path"]).decode().strip()
 
     es_dir = Path(sdk) / "usr/include/EndpointSecurity"
-    out_dir = Path(__file__).parent / "generated"
-    out_dir.mkdir(exist_ok=True)
+    serve_dir = Path(__file__).parent / "serve"
+    out_dir = serve_dir / "generated"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     contents = {h: read_header(h, es_dir) for h in HEADERS}
 
@@ -629,10 +630,10 @@ def main():
         f"window.ENDPOINT_SECURITY_DATA={json.dumps(data, separators=(',', ':'))};"
     )
 
-    sitemap_path = Path(__file__).parent / "sitemap.xml"
+    sitemap_path = serve_dir / "sitemap.xml"
     write_sitemap(data, sitemap_path)
 
-    robots_path = Path(__file__).parent / "robots.txt"
+    robots_path = serve_dir / "robots.txt"
     write_robots(robots_path)
 
     auth_count = sum(1 for e in events if e["action"] == "AUTH")

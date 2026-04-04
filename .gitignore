@@ -1,6 +1,6 @@
-# Generated data files — run parse.py to create these
-generated/
-sitemap.xml
+# Generated serve artifacts — run parse.py to create these
+serve/generated/
+serve/sitemap.xml
 
 # Python
 __pycache__/
