@@ -8,12 +8,21 @@ Usage:
 
 import re
 import json
+import argparse
 import subprocess
 from pathlib import Path
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-SDK = subprocess.check_output(["xcrun", "--show-sdk-path"]).decode().strip()
+_p = argparse.ArgumentParser(description="Parse EndpointSecurity headers")
+_p.add_argument("--sdk-path", default=None, metavar="PATH",
+                help="Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun")
+_args = _p.parse_args()
+
+if _args.sdk_path:
+    SDK = _args.sdk_path
+else:
+    SDK = subprocess.check_output(["xcrun", "--show-sdk-path"]).decode().strip()
 ES_DIR = Path(SDK) / "usr/include/EndpointSecurity"
 OUT_DIR = Path(__file__).parent / "generated"
 OUT_DIR.mkdir(exist_ok=True)
