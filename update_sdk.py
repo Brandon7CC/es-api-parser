@@ -246,7 +246,7 @@ def main() -> None:
         return
 
     # 4. Download, extract, parse
-        with tempfile.TemporaryDirectory(prefix="endpointsecurity-sdk-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="endpointsecurity-sdk-") as tmp:
         tmp_path = Path(tmp)
         pkg_file = tmp_path / "sdk.pkg"
 
