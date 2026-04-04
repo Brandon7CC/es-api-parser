@@ -18,6 +18,7 @@ import io
 import lzma
 import plistlib
 import struct
+import zlib
 import subprocess
 import sys
 from typing import Optional
@@ -66,6 +67,12 @@ def fetch_catalog() -> dict:
 def find_latest_sdk_pkg(catalog: dict) -> Optional[tuple]:
     """
     Scan the catalog for the most recent SDK package.
+
+    Within each product, SDK_PKG_NAMES is a priority-ordered list: the first
+    name that matches a package URL wins for that product (e.g. the real
+    ~60 MB NMOS package is preferred over the empty stub).  Across products
+    the one with the latest PostDate is returned.
+
     Returns (pkg_url, post_date_str) or None.
     """
 
@@ -76,17 +83,32 @@ def find_latest_sdk_pkg(catalog: dict) -> Optional[tuple]:
     for product_id, product in products.items():
         packages = product.get("Packages", [])
         post_date = product.get("PostDate")
+        if post_date is None:
+            continue
 
+        # Build a map of priority → url for this product's SDK packages
+        pkg_by_priority: dict[int, str] = {}
         for pkg in packages:
             url: str = pkg.get("URL", "")
-            for name in SDK_PKG_NAMES:
+            for priority, name in enumerate(SDK_PKG_NAMES):
                 if name in url:
-                    if post_date is not None and (
-                        best_date is None or post_date > best_date
+                    # Keep only the highest-priority (lowest index) match
+                    if priority not in pkg_by_priority or priority < min(
+                        pkg_by_priority
                     ):
-                        best_date = post_date
-                        best_url = url
+                        pkg_by_priority[priority] = url
                     break
+
+        if not pkg_by_priority:
+            continue
+
+        # Pick the highest-priority (lowest index) match for this product
+        best_priority = min(pkg_by_priority)
+        candidate_url = pkg_by_priority[best_priority]
+
+        if best_date is None or post_date > best_date:
+            best_date = post_date
+            best_url = candidate_url
 
     if best_url is None:
         return None
@@ -143,8 +165,6 @@ def download_pkg(url: str, dest: Path) -> None:
 
 def _read_xar_toc(data: bytes) -> tuple:
     """Parse XAR header and return (toc_root, heap_offset)."""
-    import zlib
-
     magic, hdr_size, _ver, toc_clen, _toc_ulen, _cksum = struct.unpack_from(
         ">IHHQQi", data, 0
     )
@@ -157,14 +177,25 @@ def _read_xar_toc(data: bytes) -> tuple:
 
 
 def _extract_xar_file(data: bytes, heap_offset: int, file_node: ET.Element) -> bytes:
-    """Extract a single file's raw bytes from the XAR heap."""
+    """Extract a single file's raw bytes from the XAR heap, decompressing if needed."""
     data_node = file_node.find("data")
     if data_node is None:
         return b""
     offset = int(data_node.findtext("offset") or 0)
     length = int(data_node.findtext("length") or 0)
-    # No decompression here — Payload is stored raw in this pkg format
-    return data[heap_offset + offset : heap_offset + offset + length]
+    raw = data[heap_offset + offset : heap_offset + offset + length]
+
+    encoding_node = data_node.find("encoding")
+    style = (encoding_node.get("style") or "") if encoding_node is not None else ""
+    if style in ("application/x-gzip", "application/zlib"):
+        raw = zlib.decompress(raw)
+    elif style == "application/x-bzip2":
+        import bz2
+
+        raw = bz2.decompress(raw)
+    # "application/octet-stream" or absent → pass through as-is
+
+    return raw
 
 
 def _decode_pbzx(payload: bytes) -> bytes:
@@ -237,7 +268,9 @@ def _iter_cpio_newc(data: bytes):
         namesize = int(hdr[94:102], 16)
         filesize = int(hdr[54:62], 16)
 
-        name = data[pos + 110 : pos + 110 + namesize - 1].decode("utf-8", errors="replace")
+        name = data[pos + 110 : pos + 110 + namesize - 1].decode(
+            "utf-8", errors="replace"
+        )
 
         # File data starts after header (110 B) + name, rounded up to 4-byte boundary
         name_block = 110 + namesize
@@ -277,6 +310,7 @@ def extract_pkg(pkg_path: Path, extract_dir: Path, debug: bool = False) -> Path:
       4. Walk the cpio archive (old-ASCII or newc), extracting only EndpointSecurity headers
     No external binaries required.
     """
+
     def dbg(msg: str) -> None:
         if debug:
             print(f"  [debug] {msg}")
@@ -295,9 +329,15 @@ def extract_pkg(pkg_path: Path, extract_dir: Path, debug: bool = False) -> Path:
         if node_name != "Payload":
             continue
 
-        dbg(f"Found Payload node")
+        dbg("Found Payload node")
         raw = _extract_xar_file(data, heap_offset, file_node)
-        dbg(f"Raw Payload size: {len(raw)} bytes, first 16 bytes: {raw[:16]!r}")
+        enc_node = file_node.find("data/encoding")
+        enc_style = (
+            (enc_node.get("style") or "none") if enc_node is not None else "none"
+        )
+        dbg(
+            f"Raw Payload size: {len(raw)} bytes, encoding: {enc_style}, first 16 bytes: {raw[:16]!r}"
+        )
         if not raw:
             continue
 
@@ -323,7 +363,9 @@ def extract_pkg(pkg_path: Path, extract_dir: Path, debug: bool = False) -> Path:
             if content:
                 dest.write_bytes(content)
 
-        dbg(f"cpio entries walked: {cpio_count}, EndpointSecurity files extracted: {es_count}")
+        dbg(
+            f"cpio entries walked: {cpio_count}, EndpointSecurity files extracted: {es_count}"
+        )
 
         for header in payload_dir.rglob("ESTypes.h"):
             dbg(f"Found ESTypes.h at: {header}")
@@ -332,7 +374,9 @@ def extract_pkg(pkg_path: Path, extract_dir: Path, debug: bool = False) -> Path:
             if (sdk_root / "usr" / "include" / "EndpointSecurity").is_dir():
                 return sdk_root
 
-        dbg(f"Payload dir contents after extraction: {list(payload_dir.rglob('*'))[:20]}")
+        dbg(
+            f"Payload dir contents after extraction: {list(payload_dir.rglob('*'))[:20]}"
+        )
 
     raise RuntimeError("Could not find EndpointSecurity headers in extracted .pkg")
 
