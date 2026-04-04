@@ -7,21 +7,23 @@ Usage:
     python3 update_sdk.py [--dry-run] [--force]
 
 Intended to be run on a schedule (e.g. cron, systemd timer, launchd) on any
-machine serving the endpointsecurity site. Requires xar and bsdtar for .pkg extraction:
-
-    macOS:         xar and bsdtar are available via Xcode Command Line Tools
-    Debian/Ubuntu: apt install xar libarchive-tools
+machine serving the endpointsecurity site.
 
 No third-party Python dependencies — stdlib only.
 """
 
 import argparse
 import gzip
+import io
+import lzma
 import plistlib
+import struct
 import subprocess
 import sys
+from typing import Optional
 import tempfile
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ def fetch_catalog() -> dict:
     return plistlib.loads(raw)
 
 
-def find_latest_sdk_pkg(catalog: dict) -> tuple[str, str] | None:
+def find_latest_sdk_pkg(catalog: dict) -> Optional[tuple]:
     """
     Scan the catalog for the most recent SDK package.
     Returns (pkg_url, post_date_str) or None.
@@ -139,32 +141,125 @@ def download_pkg(url: str, dest: Path) -> None:
 # ─── Extraction ───────────────────────────────────────────────────────────────
 
 
+def _read_xar_toc(data: bytes) -> tuple:
+    """Parse XAR header and return (toc_root, heap_offset)."""
+    import zlib
+
+    magic, hdr_size, _ver, toc_clen, _toc_ulen, _cksum = struct.unpack_from(
+        ">IHHQQi", data, 0
+    )
+    if magic != 0x78617221:
+        raise RuntimeError(f"Not a XAR archive (magic={magic:#x})")
+    toc_bytes = zlib.decompress(data[hdr_size : hdr_size + toc_clen])
+    toc = ET.fromstring(toc_bytes)
+    heap_offset = hdr_size + toc_clen
+    return toc, heap_offset
+
+
+def _extract_xar_file(data: bytes, heap_offset: int, file_node: ET.Element) -> bytes:
+    """Extract a single file's raw bytes from the XAR heap."""
+    data_node = file_node.find("data")
+    if data_node is None:
+        return b""
+    offset = int(data_node.findtext("offset") or 0)
+    length = int(data_node.findtext("length") or 0)
+    # No decompression here — Payload is stored raw in this pkg format
+    return data[heap_offset + offset : heap_offset + offset + length]
+
+
+def _decode_pbzx(payload: bytes) -> bytes:
+    """
+    Decode Apple's PBZX stream format.
+
+    Layout:
+      4B  magic ('pbzx')
+      8B  stream flags
+      Repeated chunks:
+        8B  chunk flags  (bit 24 set → XZ compressed, else raw)
+        8B  chunk size
+        <chunk size bytes of data>
+    Each decoded chunk is 16 MiB of cpio data (except possibly the last).
+    """
+    if payload[:4] != b"pbzx":
+        # Not PBZX — try passing through directly (may already be a tar/cpio)
+        return payload
+
+    out = io.BytesIO()
+    pos = 12  # skip magic (4) + stream flags (8)
+    while pos < len(payload):
+        if pos + 16 > len(payload):
+            break
+        chunk_flags, chunk_size = struct.unpack_from(">QQ", payload, pos)
+        pos += 16
+        chunk_data = payload[pos : pos + chunk_size]
+        pos += chunk_size
+        if chunk_flags & 0x01000000:
+            out.write(lzma.decompress(chunk_data))
+        else:
+            out.write(chunk_data)
+    return out.getvalue()
+
+
+def _iter_cpio_old_ascii(data: bytes):
+    """
+    Yield (name, file_bytes) from an old-ASCII cpio archive (magic 070707).
+
+    Stops cleanly on TRAILER or any unrecognised magic (e.g. truncated stream).
+    No padding is required between records in the old-ASCII format.
+    """
+    pos = 0
+    while pos + 76 <= len(data):
+        hdr = data[pos : pos + 76]
+        if hdr[:6] != b"070707":
+            break  # TRAILER pseudo-file or truncation — stop cleanly
+        namesize = int(hdr[59:65], 8)
+        filesize = int(hdr[65:76], 8)
+        pos += 76
+        name = data[pos : pos + namesize - 1].decode("utf-8", errors="replace")
+        pos += namesize
+        content = data[pos : pos + filesize]
+        pos += filesize
+        yield name, content
+
+
 def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
     """
-    Extract a macOS .pkg on Linux using xar + bsdtar.
-    Returns the SDK root (directory containing usr/include/EndpointSecurity/).
+    Extract a macOS .pkg and return the SDK root path.
+
+    Pure-Python pipeline:
+      1. Parse the XAR container (zlib-compressed TOC, raw heap)
+      2. Locate the 'Payload' file in the XAR heap
+      3. Decode the PBZX stream (XZ-compressed chunks via lzma)
+      4. Walk the old-ASCII cpio archive, extracting only EndpointSecurity headers
+    No external binaries required.
     """
     print(f"Extracting: {pkg_path.name}")
+    extract_dir.mkdir(parents=True, exist_ok=True)
 
-    # xar expands the .pkg container into its component directories
-    subprocess.run(
-        ["xar", "-xf", str(pkg_path), "-C", str(extract_dir)],
-        check=True,
-        capture_output=True,
-    )
+    data = pkg_path.read_bytes()
+    toc, heap_offset = _read_xar_toc(data)
 
-    # Each component has a Payload file — find the one containing ES headers
-    for payload in extract_dir.rglob("Payload"):
-        payload_dir = payload.parent / "payload_contents"
-        payload_dir.mkdir(exist_ok=True)
-        result = subprocess.run(
-            ["bsdtar", "-xf", str(payload), "-C", str(payload_dir)],
-            capture_output=True,
-        )
-        if result.returncode != 0:
+    for file_node in toc.findall(".//file"):
+        if file_node.findtext("name") != "Payload":
             continue
 
-        # Locate ESTypes.h to find the SDK root
+        raw = _extract_xar_file(data, heap_offset, file_node)
+        if not raw:
+            continue
+
+        cpio_bytes = _decode_pbzx(raw)
+        payload_dir = extract_dir / f"payload_{id(file_node)}"
+        payload_dir.mkdir(exist_ok=True)
+
+        for name, content in _iter_cpio_old_ascii(cpio_bytes):
+            if "EndpointSecurity" not in name:
+                continue
+            rel = name.lstrip("./")
+            dest = payload_dir / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if content:  # skip directory entries (empty content, no trailing slash)
+                dest.write_bytes(content)
+
         for header in payload_dir.rglob("ESTypes.h"):
             # ESTypes.h lives at <sdk_root>/usr/include/EndpointSecurity/ESTypes.h
             sdk_root = header.parent.parent.parent.parent
