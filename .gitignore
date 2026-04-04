@@ -5,6 +5,11 @@ generated/
 __pycache__/
 *.py[cod]
 .ruff_cache/
+venv/
+.venv/
+
+# Logs
+*.log
 
 # macOS
 .DS_Store

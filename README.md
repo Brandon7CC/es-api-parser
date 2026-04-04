@@ -2,9 +2,15 @@
 
 A local developer reference for the macOS [Endpoint Security](https://developer.apple.com/documentation/endpointsecurity) API. Parses the SDK headers and renders them as a searchable, navigable UI — no server, no dependencies.
 
-![ES API Parser screenshot](ES%20API%20Parser%20Screenshot.png)
+![ES API Parser screenshot](screenshot.png)
 
 ## Usage
+
+### Prerequisites
+
+- Python 3.9+
+- **Local use:** Xcode or Xcode Command Line Tools (provides `xcrun` and the macOS SDK)
+- **Server use:** `xar` and `bsdtar` for `.pkg` extraction (`apt install xar libarchive-tools` on Debian/Ubuntu; both ship with Xcode Command Line Tools on macOS)
 
 ### Local (macOS)
 
@@ -48,3 +54,12 @@ The viewer is a static file — any HTTP server can serve it. Point your server'
 | `endpointsecurity-data.js` | Generated — not committed |
 | `endpointsecurity.json` | Generated (human-readable) — not committed |
 | `update_sdk.py` | Polls Apple's SUCatalog, extracts SDK, re-runs `parse.py` |
+
+## Contributing
+
+```sh
+pip install pre-commit
+pre-commit install
+```
+
+Pre-commit hooks run Ruff (lint + format check) and an AST syntax check on every commit.

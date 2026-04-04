@@ -3,7 +3,13 @@
 parse.py — Parse EndpointSecurity API headers into endpointsecurity-data.js and endpointsecurity.json
 
 Usage:
-    python3 parse.py
+    python3 parse.py [--sdk-path PATH]
+
+Options:
+    --sdk-path PATH   Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun.
+                      If omitted, the active Xcode SDK is used via xcrun.
+
+Output is written to generated/ relative to this script.
 """
 
 import re
@@ -14,39 +20,22 @@ from pathlib import Path
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-_p = argparse.ArgumentParser(description="Parse EndpointSecurity headers")
-_p.add_argument(
-    "--sdk-path",
-    default=None,
-    metavar="PATH",
-    help="Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun",
-)
-_args = _p.parse_args()
-
-if _args.sdk_path:
-    SDK = _args.sdk_path
-else:
-    SDK = subprocess.check_output(["xcrun", "--show-sdk-path"]).decode().strip()
-ES_DIR = Path(SDK) / "usr/include/EndpointSecurity"
-OUT_DIR = Path(__file__).parent / "generated"
-OUT_DIR.mkdir(exist_ok=True)
-
 HEADERS = ["ESTypes.h", "ESMessage.h", "ESClient.h"]
 
 
-def read_header(name: str, seen: set = None) -> str:
+def read_header(name: str, es_dir: Path, seen: set = None) -> str:
     """Read a header and inline any EndpointSecurity-local #include directives."""
     if seen is None:
         seen = set()
     if name in seen:
         return ""
     seen.add(name)
-    content = (ES_DIR / name).read_text()
+    content = (es_dir / name).read_text()
 
     def inline(m):
         included = m.group(1)
-        if (ES_DIR / included).exists():
-            return read_header(included, seen)
+        if (es_dir / included).exists():
+            return read_header(included, es_dir, seen)
         return m.group(0)
 
     return re.sub(r"#include\s*<EndpointSecurity/([^>]+)>", inline, content)
@@ -428,7 +417,25 @@ def _parse_events_union_body(body: str) -> dict:
 
 
 def main():
-    contents = {h: read_header(h) for h in HEADERS}
+    p = argparse.ArgumentParser(description="Parse EndpointSecurity headers")
+    p.add_argument(
+        "--sdk-path",
+        default=None,
+        metavar="PATH",
+        help="Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun",
+    )
+    args = p.parse_args()
+
+    if args.sdk_path:
+        sdk = args.sdk_path
+    else:
+        sdk = subprocess.check_output(["xcrun", "--show-sdk-path"]).decode().strip()
+
+    es_dir = Path(sdk) / "usr/include/EndpointSecurity"
+    out_dir = Path(__file__).parent / "generated"
+    out_dir.mkdir(exist_ok=True)
+
+    contents = {h: read_header(h, es_dir) for h in HEADERS}
 
     # Events
     events = parse_event_types(contents["ESTypes.h"])
@@ -467,10 +474,10 @@ def main():
 
     data = {"events": events, "structs": structs, "enums": enums}
 
-    json_path = OUT_DIR / "endpointsecurity.json"
+    json_path = out_dir / "endpointsecurity.json"
     json_path.write_text(json.dumps(data, indent=2))
 
-    js_path = OUT_DIR / "endpointsecurity-data.js"
+    js_path = out_dir / "endpointsecurity-data.js"
     js_path.write_text(
         f"window.ENDPOINT_SECURITY_DATA={json.dumps(data, separators=(',', ':'))};"
     )
