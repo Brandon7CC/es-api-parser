@@ -1,6 +1,8 @@
 # ES API Parser
 
-A local developer reference for the macOS [Endpoint Security](https://developer.apple.com/documentation/endpointsecurity) API. Parses the SDK headers and renders them as a searchable, navigable UI — no server, no dependencies.
+A developer reference for the macOS [Endpoint Security](https://developer.apple.com/documentation/endpointsecurity) API. Parses the SDK headers and renders them as a searchable, navigable UI.
+
+Live at **[esapi.swiftlydetecting.com](https://esapi.swiftlydetecting.com/)**
 
 ![ES API Parser screenshot](screenshot.png)
 
