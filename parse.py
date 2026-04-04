@@ -14,6 +14,7 @@ Sitemap is written to sitemap.xml at the repo root.
 """
 
 import re
+import sys
 import json
 import argparse
 import subprocess
@@ -23,6 +24,88 @@ from urllib.parse import quote
 # ─── Config ───────────────────────────────────────────────────────────────────
 
 HEADERS = ["ESTypes.h", "ESMessage.h", "ESClient.h"]
+
+
+# ─── Telemetry class loading and validation ───────────────────────────────────
+
+
+def load_telemetry_classes(path: Path) -> dict:
+    """Load and schema-validate telemetry_classes.json.
+
+    Expected format: a JSON object mapping display class names (str) to arrays
+    of event category strings (str).  Exits with a clear message on any
+    structural error so the problem is caught before the bundle is written.
+    """
+    try:
+        raw = json.loads(path.read_text())
+    except OSError as e:
+        sys.exit(f"[error] Cannot read {path}: {e}")
+    except json.JSONDecodeError as e:
+        sys.exit(f"[error] {path} is not valid JSON: {e}")
+
+    if not isinstance(raw, dict):
+        sys.exit(
+            f"[error] {path}: top-level value must be a JSON object, got {type(raw).__name__}"
+        )
+
+    for cls, cats in raw.items():
+        if not isinstance(cls, str) or not cls.strip():
+            sys.exit(
+                f"[error] {path}: class key must be a non-empty string, got {cls!r}"
+            )
+        if not isinstance(cats, list):
+            sys.exit(
+                f"[error] {path}: value for '{cls}' must be an array, got {type(cats).__name__}"
+            )
+        for i, cat in enumerate(cats):
+            if not isinstance(cat, str) or not cat.strip():
+                sys.exit(
+                    f"[error] {path}: '{cls}'[{i}] must be a non-empty string, got {cat!r}"
+                )
+
+    return raw
+
+
+def validate_telemetry_classes(classes: dict, known_cats: set) -> None:
+    """Cross-check class assignments against the set of parsed event categories.
+
+    Fatal (exits non-zero):
+        A category string appears in more than one class — ambiguous assignment.
+
+    Warning (non-fatal):
+        A category string in the JSON is not present in the parsed events.
+        This is expected for names added for forward-compat or SDK version skew.
+
+    Info (non-fatal):
+        A parsed event category is not assigned to any class and will appear
+        under the catch-all "Other" bucket in the UI.
+    """
+    seen: dict[str, str] = {}  # category → first class that claimed it
+    errors: list[str] = []
+
+    for cls, cats in classes.items():
+        for cat in cats:
+            if cat in seen:
+                errors.append(
+                    f"  [error] '{cat}' assigned to both '{seen[cat]}' and '{cls}'"
+                    f" — fix telemetry_classes.json"
+                )
+            else:
+                seen[cat] = cls
+            if cat not in known_cats:
+                print(
+                    f"  [warn]  {cls} / '{cat}': not in parsed events"
+                    f" (stale name or SDK version skew)"
+                )
+
+    if errors:
+        for msg in errors:
+            print(msg)
+        sys.exit(1)
+
+    unclassified = sorted(known_cats - set(seen))
+    for cat in unclassified:
+        print(f"  [info]  '{cat}' has no class assignment — will appear as Other")
 
 
 def read_header(name: str, es_dir: Path, seen: set = None) -> str:
@@ -487,11 +570,20 @@ def main():
 
     contents = {h: read_header(h, es_dir) for h in HEADERS}
 
+    # Telemetry classes — load and validate before touching anything else
+    classes_path = Path(__file__).parent / "telemetry_classes.json"
+    telemetry_classes = load_telemetry_classes(classes_path)
+
     # Events
     events = parse_event_types(contents["ESTypes.h"])
     event_to_struct = parse_events_union(contents["ESMessage.h"])
     for e in events:
         e["struct"] = event_to_struct.get(e["category"])
+
+    # Validate class assignments against parsed events
+    known_cats = {e["category"] for e in events}
+    print("Telemetry class validation:")
+    validate_telemetry_classes(telemetry_classes, known_cats)
 
     # Structs and enums
     structs: dict = {}
@@ -522,7 +614,12 @@ def main():
                     "source": block["source"],
                 }
 
-    data = {"events": events, "structs": structs, "enums": enums}
+    data = {
+        "events": events,
+        "structs": structs,
+        "enums": enums,
+        "telemetryClasses": telemetry_classes,
+    }
 
     json_path = out_dir / "endpointsecurity.json"
     json_path.write_text(json.dumps(data, indent=2))
@@ -543,10 +640,12 @@ def main():
     print(f"Events : {len(events)} ({auth_count} AUTH, {notify_count} NOTIFY)")
     print(f"Structs: {len(structs)}")
     print(f"Enums  : {len(enums)}")
+    print(f"Classes: {len(telemetry_classes)}")
     print(f"Written: {json_path}")
     print(f"Written: {js_path}")
     print(f"Written: {sitemap_path}")
     print(f"Written: {robots_path}")
+    print(f"Written: {classes_path} (source)")
 
 
 if __name__ == "__main__":
