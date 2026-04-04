@@ -228,10 +228,17 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .src-toggle-btn {
   font-size: 10px; font-family: 'SF Mono', monospace; padding: 2px 8px;
   border: 1px solid var(--border); background: transparent; color: var(--text3);
-  border-radius: 3px; cursor: pointer; margin-left: auto; flex-shrink: 0;
+  border-radius: 3px; cursor: pointer; flex-shrink: 0;
 }
 .src-toggle-btn.active { color: var(--accent-green); border-color: var(--accent-green); }
 .src-toggle-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+.md-link {
+  font-size: 10px; font-family: 'SF Mono', monospace; padding: 2px 8px;
+  border: 1px solid var(--border); color: var(--text3); border-radius: 3px;
+  text-decoration: none; flex-shrink: 0; margin-left: auto;
+}
+.md-link + .src-toggle-btn { margin-left: 6px; }
+.md-link:hover { color: var(--text); border-color: var(--text3); }
 .source-view {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
   padding: 14px 16px; overflow-x: auto; font-family: 'SF Mono', 'Menlo', monospace;
@@ -291,10 +298,6 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 <script src="generated/endpointsecurity-data.js"></script>
 <script>
-// Hide the app shell immediately if this is a .md export request,
-// before any rendering happens.
-if (location.hash.slice(1).endsWith('.md')) document.body.style.visibility = 'hidden';
-
 if (!window.ENDPOINT_SECURITY_DATA) {
   document.getElementById('detail').innerHTML =
     '<p class="placeholder">⚠ generated/endpointsecurity-data.js not found.<br>Run <code>python3 parse.py</code> first.</p>';
@@ -380,7 +383,7 @@ const state = {
   collapsedClasses: new Set(),
   showSource:      false,
   selected:        null,
-  markdownMode:    false,
+  isMd:            false,
 };
 
 // ─── Search matching ──────────────────────────────────────────────────────────
@@ -603,6 +606,14 @@ function renderDetail() {
     return;
   }
   const { kind, name } = state.selected;
+
+  if (state.isMd) {
+    const md = generateMarkdown(kind, name);
+    const escaped = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    el.innerHTML = `<pre style="font-family:monospace;font-size:13px;line-height:1.6;padding:16px;white-space:pre-wrap;word-break:break-word">${escaped}</pre>`;
+    return;
+  }
+
   if      (kind === 'event')  el.innerHTML = renderEvent(name);
   else if (kind === 'struct') el.innerHTML = renderStruct(name);
   else if (kind === 'enum')   el.innerHTML = renderEnum(name);
@@ -627,6 +638,7 @@ function renderEvent(category) {
   parts.push('<div class="detail-header">');
   parts.push(`<span class="detail-title">${esc(category)}</span>`);
   if (cat.macosVersion) parts.push(`<span class="macos-tag">macOS ${esc(cat.macosVersion)}+</span>`);
+  parts.push(`<a class="md-link" href="#event:${encodeURIComponent(category)}.md" title="View as Markdown">.md</a>`);
   parts.push('</div>');
 
   if (cat.isReserved) {
@@ -658,6 +670,7 @@ function renderStruct(name) {
   parts.push('<div class="detail-header">');
   parts.push(`<span class="detail-title">${esc(name)}</span>`);
   parts.push(appleDocsAnchor(name));
+  parts.push(`<a class="md-link" href="#struct:${encodeURIComponent(name)}.md" title="View as Markdown">.md</a>`);
   parts.push(`<button class="src-toggle-btn${state.showSource?' active':''}" id="src-toggle">&lt;/&gt;</button>`);
   parts.push('</div>');
   if (state.showSource) {
@@ -711,6 +724,7 @@ function renderEnum(name) {
   parts.push('<div class="detail-header">');
   parts.push(`<span class="detail-title">${esc(name)}</span>`);
   parts.push(appleDocsAnchor(name));
+  parts.push(`<a class="md-link" href="#enum:${encodeURIComponent(name)}.md" title="View as Markdown">.md</a>`);
   parts.push(`<button class="src-toggle-btn${state.showSource?' active':''}" id="src-toggle">&lt;/&gt;</button>`);
   parts.push('</div>');
   if (state.showSource) {
@@ -745,7 +759,8 @@ function renderSource(name, kind) {
 function navigate(kind, name) {
   state.selected = { kind, name };
   state.showSource = false;
-  history.pushState({ kind, name }, '', `#${kind}:${encodeURIComponent(name)}`);
+  state.isMd = false;
+  history.pushState({ kind, name, isMd: false }, '', `#${kind}:${encodeURIComponent(name)}`);
   renderSidebar();
   renderDetail();
   requestAnimationFrame(() => {
@@ -755,8 +770,22 @@ function navigate(kind, name) {
 }
 
 window.addEventListener('popstate', e => {
-  state.selected = e.state || null;
-  renderSidebar(); renderDetail();
+  if (e.state) {
+    state.selected = { kind: e.state.kind, name: e.state.name };
+    state.isMd     = e.state.isMd ?? false;
+  } else {
+    restoreFromHash();
+  }
+  state.showSource = false;
+  renderSidebar();
+  renderDetail();
+});
+
+window.addEventListener('hashchange', () => {
+  restoreFromHash();
+  state.showSource = false;
+  renderSidebar();
+  renderDetail();
 });
 
 // ─── Controls ─────────────────────────────────────────────────────────────────
@@ -952,21 +981,23 @@ function generateMarkdown(kind, name) {
 }
 
 // ─── Restore from URL hash ────────────────────────────────────────────────────
-function restoreFromHash() {
-  const hash = location.hash.slice(1);
-  if (!hash) return;
+function parseHash(hash) {
   const isMd = hash.endsWith('.md');
   const cleaned = isMd ? hash.slice(0, -3) : hash;
   const colon = cleaned.indexOf(':');
-  if (colon === -1) return;
+  if (colon === -1) return null;
   const kind = cleaned.slice(0, colon);
   const name = decodeURIComponent(cleaned.slice(colon + 1));
-  if ((kind === 'event'  && eventCats[name]) ||
-      (kind === 'struct' && D.structs[name]) ||
-      (kind === 'enum'   && D.enums[name])) {
-    state.selected = { kind, name };
-    if (isMd) state.markdownMode = true;
-  }
+  const valid = (kind === 'event'  && eventCats[name]) ||
+                (kind === 'struct' && D.structs[name]) ||
+                (kind === 'enum'   && D.enums[name]);
+  return valid ? { kind, name, isMd } : null;
+}
+
+function restoreFromHash() {
+  const parsed = parseHash(location.hash.slice(1));
+  state.selected = parsed ? { kind: parsed.kind, name: parsed.name } : null;
+  state.isMd     = parsed?.isMd ?? false;
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
