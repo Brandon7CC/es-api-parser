@@ -266,7 +266,7 @@ def _iter_cpio(data: bytes):
     # Unknown / empty — nothing to yield
 
 
-def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
+def extract_pkg(pkg_path: Path, extract_dir: Path, debug: bool = False) -> Path:
     """
     Extract a macOS .pkg and return the SDK root path.
 
@@ -277,38 +277,62 @@ def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
       4. Walk the cpio archive (old-ASCII or newc), extracting only EndpointSecurity headers
     No external binaries required.
     """
+    def dbg(msg: str) -> None:
+        if debug:
+            print(f"  [debug] {msg}")
+
     print(f"Extracting: {pkg_path.name}")
     extract_dir.mkdir(parents=True, exist_ok=True)
 
     data = pkg_path.read_bytes()
     toc, heap_offset = _read_xar_toc(data)
 
+    xar_names = [n.findtext("name") for n in toc.findall(".//file")]
+    dbg(f"XAR entries: {xar_names}")
+
     for file_node in toc.findall(".//file"):
-        if file_node.findtext("name") != "Payload":
+        node_name = file_node.findtext("name")
+        if node_name != "Payload":
             continue
 
+        dbg(f"Found Payload node")
         raw = _extract_xar_file(data, heap_offset, file_node)
+        dbg(f"Raw Payload size: {len(raw)} bytes, first 16 bytes: {raw[:16]!r}")
         if not raw:
             continue
 
         cpio_bytes = _decode_pbzx(raw)
+        dbg(f"Post-PBZX size: {len(cpio_bytes)} bytes, magic: {cpio_bytes[:6]!r}")
+
         payload_dir = extract_dir / f"payload_{id(file_node)}"
         payload_dir.mkdir(exist_ok=True)
 
+        cpio_count = 0
+        es_count = 0
         for name, content in _iter_cpio(cpio_bytes):
+            cpio_count += 1
+            if debug and cpio_count <= 10:
+                dbg(f"  cpio entry: {name!r} ({len(content)} bytes)")
             if "EndpointSecurity" not in name:
                 continue
+            es_count += 1
+            dbg(f"  ES file: {name!r}")
             rel = name.lstrip("./")
             dest = payload_dir / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
-            if content:  # skip directory entries (empty content, no trailing slash)
+            if content:
                 dest.write_bytes(content)
 
+        dbg(f"cpio entries walked: {cpio_count}, EndpointSecurity files extracted: {es_count}")
+
         for header in payload_dir.rglob("ESTypes.h"):
+            dbg(f"Found ESTypes.h at: {header}")
             # ESTypes.h lives at <sdk_root>/usr/include/EndpointSecurity/ESTypes.h
             sdk_root = header.parent.parent.parent.parent
             if (sdk_root / "usr" / "include" / "EndpointSecurity").is_dir():
                 return sdk_root
+
+        dbg(f"Payload dir contents after extraction: {list(payload_dir.rglob('*'))[:20]}")
 
     raise RuntimeError("Could not find EndpointSecurity headers in extracted .pkg")
 
@@ -341,6 +365,11 @@ def main() -> None:
         "--force",
         action="store_true",
         help="Re-download and re-parse even if the SDK URL is unchanged",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print verbose extraction diagnostics",
     )
     args = parser.parse_args()
 
@@ -394,7 +423,7 @@ def main() -> None:
             sys.exit(1)
 
         try:
-            sdk_root = extract_pkg(pkg_file, tmp_path / "extracted")
+            sdk_root = extract_pkg(pkg_file, tmp_path / "extracted", debug=args.debug)
         except Exception as e:
             print(f"ERROR: Extraction failed: {e}", file=sys.stderr)
             sys.exit(1)
