@@ -97,7 +97,18 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .filter-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
 .ver-group { display: flex; align-items: center; gap: 5px; color: var(--text2); font-size: 11px; white-space: nowrap; }
 #ver-slider { width: 70px; accent-color: var(--accent-blue); }
-#ver-num { color: var(--accent-blue); font-weight: 600; min-width: 18px; }
+#ver-num {
+  width: 38px; background: transparent; border: 1px solid transparent;
+  color: var(--accent-blue); font-weight: 600; font-size: 11px;
+  font-family: 'SF Mono', monospace; text-align: center;
+  border-radius: 3px; padding: 1px 2px; outline: none;
+  -moz-appearance: textfield;
+}
+#ver-num::-webkit-inner-spin-button,
+#ver-num::-webkit-outer-spin-button { display: none; }
+#ver-num:hover, #ver-num:focus {
+  border-color: var(--accent-blue); background: var(--bg3);
+}
 
 /* ─── Prefs button & panel ────────────────────────────────────────── */
 #prefs-wrap { position: relative; }
@@ -124,7 +135,18 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 #body { display: flex; flex: 1; overflow: hidden; }
 
 /* ─── Sidebar ─────────────────────────────────────────────────────── */
-#sidebar { width: 270px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; }
+#sidebar-wrap { width: 270px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+#sidebar-pin { padding: 8px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg2); display: flex; flex-direction: row; gap: 5px; }
+#btn-changelog, #btn-eventmap {
+  flex: 1; text-align: center; background: transparent;
+  border: 1px solid var(--border); color: var(--text2);
+  border-radius: 4px; padding: 5px 10px; cursor: pointer;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+#btn-changelog.active, #btn-eventmap.active { color: var(--accent-blue); border-color: var(--accent-blue); background: var(--badge-ver); }
+#btn-changelog:hover:not(.active), #btn-eventmap:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+#sidebar { overflow-y: auto; flex: 1; }
 .section-hdr {
   display: flex; justify-content: space-between; align-items: center;
   padding: 7px 10px 7px 12px; background: var(--bg2); border-bottom: 1px solid var(--border);
@@ -170,7 +192,8 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 
 .detail-brief { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 16px; max-width: 720px; }
 .event-tags { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-.event-tag { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--text2); background: var(--bg3); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); }
+.event-tag { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--text2); background: var(--bg3); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px; }
+.event-tag-num { font-family: 'SF Mono', monospace; font-size: 10px; color: var(--text3); background: var(--bg2); border: 1px solid var(--border-subtle); border-radius: 2px; padding: 0 4px; }
 .macos-tag { font-size: 11px; color: var(--text3); }
 
 .fields-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px; }
@@ -198,12 +221,12 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .reserved-note { background: var(--badge-reserved); border-left: 3px solid var(--badge-reserved-text); color: var(--badge-reserved-text); padding: 8px 12px; border-radius: 0 3px 3px 0; font-size: 12px; margin-bottom: 14px; max-width: 720px; }
 
 /* ─── macOS filter ────────────────────────────────────────────────── */
-#macos-filter {
+#macos-filter, #event-filter {
   background: var(--bg3); border: 1px solid var(--border);
   color: var(--text2); padding: 3px 6px; border-radius: 4px;
   font-size: 11px; cursor: pointer; outline: none;
 }
-#macos-filter:focus { border-color: var(--accent-blue); color: var(--text); }
+#macos-filter:focus, #event-filter:focus { border-color: var(--accent-blue); color: var(--text); }
 
 /* ─── Class view button & grouping ───────────────────────────────── */
 .class-view-btn {
@@ -249,18 +272,110 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 .src-kw { color: var(--accent-purple); }
 .src-type { color: var(--accent-green); }
 .no-src { color: var(--text3); font-size: 12px; font-style: italic; margin-bottom: 16px; }
+
+/* ─── Changelog view ──────────────────────────────────────────────── */
+.cl-page-title { font-size: 16px; font-weight: 700; color: var(--text-bright); }
+.cl-section { margin-bottom: 28px; }
+.cl-ver-hdr {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.cl-ver-label {
+  font-family: 'SF Mono', monospace; font-size: 14px; font-weight: 700;
+  color: var(--text-bright);
+}
+.cl-macos-label { font-size: 11px; color: var(--text3); }
+.cl-subsection { margin-bottom: 14px; }
+.cl-sub-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text3); margin-bottom: 6px; }
+.cl-struct-group { margin-bottom: 10px; }
+.cl-struct-name {
+  font-family: 'SF Mono', monospace; font-size: 12px; color: var(--accent-purple);
+  cursor: pointer; margin-bottom: 4px;
+}
+.cl-struct-name:hover { color: var(--type-link-hover); text-decoration: underline;
+  text-underline-offset: 2px; }
+.cl-field-row { display: flex; align-items: baseline; gap: 8px;
+  padding: 3px 0 3px 12px; border-bottom: 1px solid var(--border-subtle); }
+.cl-field-row:last-child { border-bottom: none; }
+.cl-field-name { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--accent-blue); flex-shrink: 0; }
+.cl-field-type { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--accent-purple); flex-shrink: 0; }
+.cl-field-doc { font-size: 11px; color: var(--text2); }
+.cl-event-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.cl-event-chip {
+  font-family: 'SF Mono', monospace; font-size: 11px; padding: 2px 8px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text2); cursor: pointer;
+}
+.cl-event-chip:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+.cl-macos-hint { font-size: 10px; color: var(--text3); font-style: italic; }
+.cl-copy-btn {
+  font-size: 10px; font-family: 'SF Mono', monospace; padding: 2px 8px;
+  border: 1px solid var(--border); background: transparent; color: var(--text3);
+  border-radius: 3px; cursor: pointer; margin-left: auto; flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+}
+.cl-copy-btn:hover { color: var(--text); border-color: var(--text3); }
+.cl-page-hdr { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+
+/* ─── Event Map view ──────────────────────────────────────────────── */
+.em-page-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.em-page-title { font-size: 16px; font-weight: 700; color: var(--text-bright); }
+.em-tab-btn {
+  font-size: 10px; font-family: 'SF Mono', monospace; padding: 2px 10px;
+  border: 1px solid var(--border); background: transparent; color: var(--text3);
+  border-radius: 3px; cursor: pointer;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+.em-tab-btn.active { color: var(--accent-green); border-color: var(--accent-green); background: transparent; }
+.em-tab-btn:hover:not(.active) { color: var(--text); border-color: var(--text3); }
+.em-class-section { margin-bottom: 22px; }
+.em-class-hdr {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text2); padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  margin-bottom: 8px; display: flex; align-items: baseline; gap: 6px;
+}
+.em-class-count { font-size: 10px; color: var(--text3); font-weight: 400; }
+.em-event-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.em-chip {
+  font-family: 'SF Mono', monospace; font-size: 11px; padding: 2px 8px;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
+  color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+}
+.em-chip:hover { color: var(--accent-blue); border-color: var(--accent-blue); }
+.em-macos { font-size: 10px; color: var(--text3); }
+.matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+.matrix-table th {
+  text-align: left; padding: 5px 10px; color: var(--text3); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+  font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap;
+}
+.matrix-table th:hover { color: var(--text); }
+.matrix-sort-arrow { margin-left: 3px; font-size: 9px; }
+.matrix-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.matrix-table tr:hover td { background: var(--bg3); cursor: pointer; }
+.matrix-check { color: var(--accent-green); font-weight: 700; }
+.matrix-dash { color: var(--text3); }
+.matrix-cat { font-family: 'SF Mono', monospace; color: var(--accent-blue); font-size: 12px; }
+.matrix-class { font-size: 11px; color: var(--text2); }
+.matrix-struct { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--accent-purple); cursor: pointer; text-decoration: underline; text-decoration-color: var(--text3); text-underline-offset: 2px; }
+.matrix-struct:hover { color: var(--type-link-hover); }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="toolbar">
     <span class="logo">ES API Parser</span>
-    <input id="search" type="text" placeholder="Search events, structs, fields, enums, ES_EVENT_TYPE_…" autocomplete="off" spellcheck="false">
-    <button class="filter-btn active" id="btn-auth">AUTH</button>
-    <button class="filter-btn active" id="btn-notify">NOTIFY</button>
-    <button class="filter-btn" id="btn-reserved">RSVD</button>
+    <input id="search" type="text" placeholder="Search events, structs, fields, enums" autocomplete="off" spellcheck="false">
+    <select id="event-filter" title="Filter events by action type">
+      <option value="all">All events</option>
+      <option value="authn">AUTH + NOTIFY</option>
+      <option value="auth">AUTH only</option>
+      <option value="notify">NOTIFY only</option>
+      <option value="rsvd">RSVD only</option>
+    </select>
     <div class="ver-group">
-      msg v≥<span id="ver-num">–</span>
+      msg v≥<input id="ver-num" type="number" min="1" max="10" value="10" title="Minimum message version">
       <input id="ver-slider" type="range" min="1" max="10" value="10">
     </div>
     <select id="macos-filter" title="Filter events by macOS availability">
@@ -291,7 +406,13 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
     </div>
   </div>
   <div id="body">
-    <nav id="sidebar"></nav>
+    <div id="sidebar-wrap">
+      <div id="sidebar-pin">
+        <button id="btn-changelog">Change log</button>
+        <button id="btn-eventmap">Event Map</button>
+      </div>
+      <nav id="sidebar"></nav>
+    </div>
     <main id="detail"><p class="placeholder">Select an item from the sidebar, or search.</p></main>
   </div>
 </div>
@@ -348,7 +469,8 @@ const verSlider = document.getElementById('ver-slider');
 const verNum    = document.getElementById('ver-num');
 verSlider.max   = maxVersion;
 verSlider.value = maxVersion;
-verNum.textContent = maxVersion;
+verNum.max      = maxVersion;
+verNum.value    = maxVersion;
 
 // ─── Build event categories ───────────────────────────────────────────────────
 const eventCats = {};
@@ -371,19 +493,51 @@ const sortedCats    = Object.values(eventCats).sort((a,b) => a.category.localeCo
 const sortedStructs = Object.keys(D.structs).sort();
 const sortedEnums   = Object.keys(D.enums).sort();
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ─── Build changelog data (computed once) ─────────────────────────────────────
+// byMsgVersion: { [v: number]: { fields: [{structName, field}] } }
+// byMacOS:      { [v: string]: { events: [cat] } }
+const CHANGELOG = (() => {
+  const byMsgVersion = {};
+  for (const [structName, s] of Object.entries(D.structs)) {
+    for (const f of s.fields) {
+      if (!f.sinceVersion) continue;
+      const v = f.sinceVersion;
+      if (!byMsgVersion[v]) byMsgVersion[v] = { fields: [] };
+      byMsgVersion[v].fields.push({ structName, field: f });
+    }
+  }
+  const byMacOS = {};
+  for (const cat of Object.values(eventCats)) {
+    const v = cat.macosVersion;
+    if (!v) continue;
+    if (!byMacOS[v]) byMacOS[v] = { events: [] };
+    byMacOS[v].events.push(cat);
+  }
+  // Sort events within each macOS bucket alphabetically
+  for (const b of Object.values(byMacOS))
+    b.events.sort((a, b) => a.category.localeCompare(b.category));
+  return { byMsgVersion, byMacOS };
+})();
+
+// ─── Event enum value lookup ──────────────────────────────────────────────────
+const eventEnumValue = {};
+for (const e of D.events) eventEnumValue[e.name] = e.value;
 const state = {
   query:           '',
   showAuth:        true,
   showNotify:      true,
-  showReserved:    false,
+  showReserved:    true,
   minVersion:      maxVersion,
   minMacOS:        '',
-  classView:       false,
+  classView:       true,
   collapsedClasses: new Set(),
   showSource:      false,
   selected:        null,
   isMd:            false,
+  showChangelog:   false,
+  showEventMap:    false,
+  eventMapTab:     'class',   // 'class' | 'matrix'
+  matrixSort:      { col: 'class', dir: 'asc' },
 };
 
 // ─── Search matching ──────────────────────────────────────────────────────────
@@ -598,9 +752,197 @@ function sectionHdr(id, label, count, collapsed, extra = '') {
   </div>`;
 }
 
+// ─── Changelog data builder ───────────────────────────────────────────────────
+// Msg version → approximate macOS version (conservative, partial inference).
+// Used only for ordering and display hints — shown as "~X.x", never claimed precise.
+const MSG_V_MACOS_HINT = {
+  1: '10.15', 2: '10.15', 3: '11.0', 4: '12.0',
+  5: '13.0',  6: '14.0',  7: '15.0', 8: '15.0',
+  9: '15.0',  10: '26.0',
+};
+
+function macosHintDisplay(hint) {
+  // '26.0' → '~26.x', '10.15' → '~10.15', '15.0' → '~15.x'
+  if (!hint) return '';
+  const parts = hint.split('.');
+  if (parts.length >= 3) return `~${parts[0]}.${parts[1]}.x`;
+  if (parts[parts.length - 1] === '0') return `~${parts[0]}.x`;
+  return `~${hint}`;
+}
+
+function buildChangelogSections() {
+  const sections = [];
+
+  // Type A: one section per distinct macOS version (events only)
+  for (const [macosV, bucket] of Object.entries(CHANGELOG.byMacOS)) {
+    if (!bucket.events?.length) continue;
+    sections.push({ type: 'events', macosV, events: bucket.events });
+  }
+
+  // Type B: one section per distinct msg version (struct fields only)
+  for (const [vStr, bucket] of Object.entries(CHANGELOG.byMsgVersion)) {
+    if (!bucket.fields?.length) continue;
+    const msgV = Number(vStr);
+    const hint = MSG_V_MACOS_HINT[msgV] || null;
+    sections.push({ type: 'fields', msgV, macosHint: hint, fields: bucket.fields });
+  }
+
+  // Sort descending: use macosV directly for events; use macosHint (or '0') for fields
+  sections.sort((a, b) => {
+    const av = a.type === 'events' ? a.macosV : (a.macosHint || '0');
+    const bv = b.type === 'events' ? b.macosV : (b.macosHint || '0');
+    const cmp = compareMacOS(bv, av); // descending
+    if (cmp !== 0) return cmp;
+    // Tie-break: within same approximate macOS, events before fields,
+    // then by msgV descending for fields
+    if (a.type !== b.type) return a.type === 'events' ? -1 : 1;
+    if (a.type === 'fields') return b.msgV - a.msgV;
+    return compareMacOS(b.macosV, a.macosV);
+  });
+
+  return sections;
+}
+
+// ─── Changelog renderer ───────────────────────────────────────────────────────
+function renderChangelog() {
+  const sections = buildChangelogSections();
+  const parts = [];
+
+  parts.push('<div class="cl-page-hdr">');
+  parts.push('<span class="cl-page-title">What\'s New</span>');
+  parts.push('<button class="cl-copy-btn" data-section="all">Copy .md</button>');
+  parts.push('</div>');
+
+  if (!sections.length) {
+    parts.push('<p class="placeholder">No version history available in current data.</p>');
+    return parts.join('');
+  }
+
+  sections.forEach((sec, idx) => {
+    parts.push('<div class="cl-section">');
+
+    if (sec.type === 'events') {
+      // Header: macOS X.Y  [Copy .md]
+      parts.push('<div class="cl-ver-hdr">');
+      parts.push(`<span class="cl-ver-label">macOS ${esc(sec.macosV)}</span>`);
+      parts.push(`<button class="cl-copy-btn" data-section="${idx}">Copy .md</button>`);
+      parts.push('</div>');
+
+      parts.push('<div class="cl-subsection">');
+      parts.push('<div class="cl-sub-hdr">New Events</div>');
+      parts.push('<div class="cl-event-list">');
+      for (const cat of sec.events) {
+        const badge = cat.isReserved
+          ? '<span class="badge badge-reserved" style="margin-left:4px">RSVD</span>'
+          : [...cat.actions].sort().map(a =>
+              `<span class="badge badge-${a.toLowerCase()}" style="margin-left:4px">${a}</span>`
+            ).join('');
+        parts.push(`<span class="cl-event-chip" data-name="${esc(cat.category)}">${esc(cat.category)}${badge}</span>`);
+      }
+      parts.push('</div></div>');
+
+    } else {
+      // Type: fields — header: msg vN  (~macOS X.x)  [Copy .md]
+      const hint = sec.macosHint ? macosHintDisplay(sec.macosHint) : '';
+      parts.push('<div class="cl-ver-hdr">');
+      parts.push(`<span class="cl-ver-label">msg v${sec.msgV}</span>`);
+      if (hint) parts.push(`<span class="cl-macos-hint">${esc(hint)}</span>`);
+      parts.push(`<button class="cl-copy-btn" data-section="${idx}">Copy .md</button>`);
+      parts.push('</div>');
+
+      parts.push('<div class="cl-subsection">');
+      parts.push('<div class="cl-sub-hdr">New Struct Fields</div>');
+
+      const byStruct = {};
+      for (const { structName, field } of sec.fields) {
+        (byStruct[structName] = byStruct[structName] || []).push(field);
+      }
+      for (const [structName, fields] of Object.entries(byStruct).sort()) {
+        parts.push('<div class="cl-struct-group">');
+        parts.push(`<div class="cl-struct-name" data-ref="${esc(structName)}">${esc(structName)}</div>`);
+        for (const f of fields) {
+          const typeCell = (f.typeRef && (D.structs[f.typeRef] || D.enums[f.typeRef]))
+            ? `<span class="type-link" data-ref="${esc(f.typeRef)}">${esc(f.type)}</span>`
+            : `<span class="cl-field-type">${esc(f.type)}</span>`;
+          parts.push(`<div class="cl-field-row">
+            <span class="cl-field-name">${esc(f.name)}</span>
+            ${typeCell}
+            <span class="cl-field-doc">${esc(f.doc)}</span>
+          </div>`);
+        }
+        parts.push('</div>');
+      }
+      parts.push('</div>');
+    }
+
+    parts.push('</div>'); // cl-section
+  });
+
+  return parts.join('');
+}
+
 // ─── Detail pane ──────────────────────────────────────────────────────────────
 function renderDetail() {
   const el = document.getElementById('detail');
+
+  if (state.showEventMap) {
+    el.innerHTML = renderEventMap();
+    el.querySelectorAll('.em-tab-btn[data-tab]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        state.eventMapTab = btn.dataset.tab;
+        renderDetail();
+      })
+    );
+    el.querySelectorAll('.em-chip[data-name]').forEach(chip =>
+      chip.addEventListener('click', () => navigate('event', chip.dataset.name))
+    );
+    el.querySelectorAll('.matrix-table th[data-col]').forEach(th =>
+      th.addEventListener('click', () => {
+        if (state.matrixSort.col === th.dataset.col) {
+          state.matrixSort.dir = state.matrixSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.matrixSort = { col: th.dataset.col, dir: 'asc' };
+        }
+        renderDetail();
+      })
+    );
+    el.querySelectorAll('.matrix-struct[data-ref]').forEach(span =>
+      span.addEventListener('click', e => {
+        e.stopPropagation();
+        navigate('struct', span.dataset.ref);
+      })
+    );
+    el.querySelectorAll('tr[data-name]').forEach(row =>
+      row.addEventListener('click', () => navigate('event', row.dataset.name))
+    );
+    return;
+  }
+
+  if (state.showChangelog) {
+    if (state.isMd) {
+      const md = generateChangelogMarkdown();
+      const escaped = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      el.innerHTML = `<pre style="font-family:monospace;font-size:13px;line-height:1.6;padding:16px;white-space:pre-wrap;word-break:break-word">${escaped}</pre>`;
+      return;
+    }
+    el.innerHTML = renderChangelog();
+    el.querySelectorAll('.cl-struct-name[data-ref]').forEach(el =>
+      el.addEventListener('click', () => navigate('struct', el.dataset.ref))
+    );
+    el.querySelectorAll('.cl-event-chip[data-name]').forEach(el =>
+      el.addEventListener('click', () => navigate('event', el.dataset.name))
+    );
+    el.querySelectorAll('.cl-copy-btn[data-section]').forEach(btn =>
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const sec = btn.dataset.section;
+        const text = sec === 'all' ? generateChangelogMarkdown() : generateChangelogMarkdown(+sec);
+        copyToClipboard(text, btn);
+      })
+    );
+    return;
+  }
+
   if (!state.selected) {
     el.innerHTML = '<p class="placeholder">Select an item from the sidebar, or search.</p>';
     return;
@@ -647,7 +989,11 @@ function renderEvent(category) {
 
   parts.push('<div class="event-tags">');
   for (const fullName of cat.fullNames.sort()) {
-    parts.push(`<span class="event-tag">${esc(fullName)}</span>`);
+    const val = eventEnumValue[fullName];
+    const numBadge = val !== undefined
+      ? `<span class="event-tag-num">${val}</span>`
+      : '';
+    parts.push(`<span class="event-tag">${esc(fullName)}${numBadge}</span>`);
   }
   parts.push('</div>');
 
@@ -760,6 +1106,10 @@ function navigate(kind, name) {
   state.selected = { kind, name };
   state.showSource = false;
   state.isMd = false;
+  state.showChangelog = false;
+  state.showEventMap = false;
+  document.getElementById('btn-changelog').classList.remove('active');
+  document.getElementById('btn-eventmap').classList.remove('active');
   history.pushState({ kind, name, isMd: false }, '', `#${kind}:${encodeURIComponent(name)}`);
   renderSidebar();
   renderDetail();
@@ -771,10 +1121,32 @@ function navigate(kind, name) {
 
 window.addEventListener('popstate', e => {
   if (e.state) {
-    state.selected = { kind: e.state.kind, name: e.state.name };
-    state.isMd     = e.state.isMd ?? false;
+    if (e.state.kind === 'changelog') {
+      state.showChangelog = true;
+      state.showEventMap = false;
+      state.selected = null;
+      state.isMd = e.state.isMd ?? false;
+      document.getElementById('btn-changelog').classList.add('active');
+      document.getElementById('btn-eventmap').classList.remove('active');
+    } else if (e.state.kind === 'eventmap') {
+      state.showEventMap = true;
+      state.showChangelog = false;
+      state.selected = null;
+      state.isMd = false;
+      document.getElementById('btn-eventmap').classList.add('active');
+      document.getElementById('btn-changelog').classList.remove('active');
+    } else {
+      state.selected = { kind: e.state.kind, name: e.state.name };
+      state.isMd     = e.state.isMd ?? false;
+      state.showChangelog = false;
+      state.showEventMap = false;
+      document.getElementById('btn-changelog').classList.remove('active');
+      document.getElementById('btn-eventmap').classList.remove('active');
+    }
   } else {
     restoreFromHash();
+    document.getElementById('btn-changelog').classList.toggle('active', state.showChangelog);
+    document.getElementById('btn-eventmap').classList.toggle('active', state.showEventMap);
   }
   state.showSource = false;
   renderSidebar();
@@ -784,6 +1156,8 @@ window.addEventListener('popstate', e => {
 window.addEventListener('hashchange', () => {
   restoreFromHash();
   state.showSource = false;
+  document.getElementById('btn-changelog').classList.toggle('active', state.showChangelog);
+  document.getElementById('btn-eventmap').classList.toggle('active', state.showEventMap);
   renderSidebar();
   renderDetail();
 });
@@ -794,19 +1168,53 @@ document.getElementById('search').addEventListener('input', e => {
   renderSidebar();
 });
 
-function toggleFilter(btn, stateKey) {
-  btn.classList.toggle('active');
-  state[stateKey] = btn.classList.contains('active');
+document.getElementById('event-filter').addEventListener('change', function() {
+  const v = this.value;
+  state.showAuth     = v === 'all' || v === 'auth+notify' || v === 'auth';
+  state.showNotify   = v === 'all' || v === 'auth+notify' || v === 'notify';
+  state.showReserved = v === 'all' || v === 'rsvd';
   renderSidebar();
-}
+});
 
-document.getElementById('btn-auth').addEventListener('click', function() { toggleFilter(this, 'showAuth'); });
-document.getElementById('btn-notify').addEventListener('click', function() { toggleFilter(this, 'showNotify'); });
-document.getElementById('btn-reserved').addEventListener('click', function() { toggleFilter(this, 'showReserved'); });
+document.getElementById('btn-changelog').addEventListener('click', function() {
+  state.showChangelog = !state.showChangelog;
+  this.classList.toggle('active', state.showChangelog);
+  if (state.showChangelog) {
+    state.isMd = false;
+    state.showEventMap = false;
+    document.getElementById('btn-eventmap').classList.remove('active');
+    history.pushState({ kind: 'changelog' }, '', '#changelog');
+  } else {
+    history.pushState({}, '', location.pathname);
+  }
+  renderDetail();
+});
+
+document.getElementById('btn-eventmap').addEventListener('click', function() {
+  state.showEventMap = !state.showEventMap;
+  this.classList.toggle('active', state.showEventMap);
+  if (state.showEventMap) {
+    state.showChangelog = false;
+    document.getElementById('btn-changelog').classList.remove('active');
+    history.pushState({ kind: 'eventmap' }, '', '#eventmap');
+  } else {
+    history.pushState({}, '', location.pathname);
+  }
+  renderDetail();
+});
 
 verSlider.addEventListener('input', function() {
   state.minVersion = +this.value;
-  verNum.textContent = this.value;
+  verNum.value = this.value;
+  renderDetail();
+});
+
+verNum.addEventListener('input', function() {
+  let v = parseInt(this.value, 10);
+  if (isNaN(v)) return;
+  v = Math.max(1, Math.min(maxVersion, v));
+  state.minVersion = v;
+  verSlider.value  = v;
   renderDetail();
 });
 
@@ -875,7 +1283,11 @@ function generateMarkdown(kind, name) {
     lines.push('');
     lines.push('## Event Types');
     lines.push('');
-    for (const fn of cat.fullNames.sort()) lines.push(`- \`${fn}\``);
+    for (const fn of cat.fullNames.sort()) {
+      const val = eventEnumValue[fn];
+      const numStr = val !== undefined ? ` (${val})` : '';
+      lines.push(`- \`${fn}\`${numStr}`);
+    }
     lines.push('');
     if (cat.isReserved) {
       lines.push('> Undocumented / reserved event type. No public struct definition is available.');
@@ -980,10 +1392,186 @@ function generateMarkdown(kind, name) {
   return lines.join('\n');
 }
 
+// ─── Event Map renderer ───────────────────────────────────────────────────────
+function renderEventMap() {
+  const parts = [];
+  parts.push('<div class="em-page-hdr">');
+  parts.push('<span class="em-page-title">Event Map</span>');
+  parts.push(`<button class="em-tab-btn${state.eventMapTab==='class'?' active':''}" data-tab="class">By Class</button>`);
+  parts.push(`<button class="em-tab-btn${state.eventMapTab==='matrix'?' active':''}" data-tab="matrix">Matrix</button>`);
+  parts.push('</div>');
+  parts.push(state.eventMapTab === 'matrix' ? renderMatrix() : renderByClass());
+  return parts.join('');
+}
+
+function renderByClass() {
+  const parts = [];
+  // Build class → cats map, preserving TELEMETRY_CLASSES order
+  const classCats = {};
+  for (const cat of sortedCats) {
+    const cls = cat.telemetryClass || 'Other';
+    (classCats[cls] = classCats[cls] || []).push(cat);
+  }
+  const classOrder = [...Object.keys(TELEMETRY_CLASSES).filter(c => classCats[c])];
+  if (classCats['Other']) classOrder.push('Other');
+
+  for (const cls of classOrder) {
+    const cats = classCats[cls];
+    parts.push('<div class="em-class-section">');
+    parts.push(`<div class="em-class-hdr"><span>${esc(cls)}</span><span class="em-class-count">${cats.length}</span></div>`);
+    parts.push('<div class="em-event-list">');
+    for (const cat of cats) {
+      const badges = cat.isReserved
+        ? '<span class="badge badge-reserved" style="margin-left:2px">RSVD</span>'
+        : [...cat.actions].sort().map(a =>
+            `<span class="badge badge-${a.toLowerCase()}" style="margin-left:2px">${a}</span>`
+          ).join('');
+      const ver = cat.macosVersion ? `<span class="em-macos">${cat.macosVersion}</span>` : '';
+      parts.push(`<span class="em-chip" data-name="${esc(cat.category)}">${esc(cat.category)}${badges}${ver}</span>`);
+    }
+    parts.push('</div></div>');
+  }
+  return parts.join('');
+}
+
+function renderMatrix() {
+  const { col, dir } = state.matrixSort;
+  const mult = dir === 'asc' ? 1 : -1;
+
+  const rows = [...sortedCats].sort((a, b) => {
+    let av, bv;
+    if (col === 'category') { av = a.category; bv = b.category; }
+    else if (col === 'class') { av = (a.telemetryClass||'Other') + a.category; bv = (b.telemetryClass||'Other') + b.category; }
+    else if (col === 'auth')  { av = a.actions.has('AUTH')?0:1; bv = b.actions.has('AUTH')?0:1; }
+    else if (col === 'notify'){ av = a.actions.has('NOTIFY')?0:1; bv = b.actions.has('NOTIFY')?0:1; }
+    else if (col === 'macos') { return mult * compareMacOS(a.macosVersion||'0', b.macosVersion||'0'); }
+    else if (col === 'struct'){ av = a.struct||''; bv = b.struct||''; }
+    else { av = a.category; bv = b.category; }
+    return mult * (av < bv ? -1 : av > bv ? 1 : 0);
+  });
+
+  function thArr(id, label) {
+    const active = col === id;
+    const arrow = active ? `<span class="matrix-sort-arrow">${dir==='asc'?'▲':'▼'}</span>` : '';
+    return `<th data-col="${id}">${label}${arrow}</th>`;
+  }
+
+  const parts = [];
+  parts.push('<table class="matrix-table">');
+  parts.push(`<thead><tr>
+    ${thArr('category','Category')}
+    ${thArr('class','Class')}
+    ${thArr('auth','AUTH')}
+    ${thArr('notify','NOTIFY')}
+    ${thArr('macos','macOS')}
+    ${thArr('struct','Struct')}
+  </tr></thead><tbody>`);
+
+  for (const cat of rows) {
+    const auth   = cat.isReserved ? `<span class="badge badge-reserved">RSVD</span>`
+                 : cat.actions.has('AUTH')   ? '<span class="matrix-check">✓</span>'
+                 : '<span class="matrix-dash">—</span>';
+    const notify = cat.isReserved ? '<span class="matrix-dash">—</span>'
+                 : cat.actions.has('NOTIFY') ? '<span class="matrix-check">✓</span>'
+                 : '<span class="matrix-dash">—</span>';
+    const macos  = cat.macosVersion ? esc(cat.macosVersion) : '<span class="matrix-dash">—</span>';
+    const struct = cat.struct && D.structs[cat.struct]
+      ? `<span class="matrix-struct" data-ref="${esc(cat.struct)}">${esc(cat.struct)}</span>`
+      : (cat.struct ? `<span class="matrix-dash">${esc(cat.struct)}</span>` : '<span class="matrix-dash">—</span>');
+
+    parts.push(`<tr data-name="${esc(cat.category)}">
+      <td><span class="matrix-cat">${esc(cat.category)}</span></td>
+      <td><span class="matrix-class">${esc(cat.telemetryClass||'Other')}</span></td>
+      <td>${auth}</td>
+      <td>${notify}</td>
+      <td>${macos}</td>
+      <td>${struct}</td>
+    </tr>`);
+  }
+  parts.push('</tbody></table>');
+  return parts.join('');
+}
+
+// ─── Changelog Markdown export ───────────────────────────────────────────────
+function generateChangelogMarkdown(sectionIdx) {
+  const sections = buildChangelogSections();
+  const lines = [];
+
+  function renderSection(sec) {
+    if (sec.type === 'events') {
+      lines.push(`## macOS ${sec.macosV}`);
+      lines.push('');
+      lines.push('### New Events');
+      lines.push('');
+      for (const cat of sec.events) {
+        const actions = cat.isReserved ? ['RESERVED'] : [...cat.actions].sort();
+        lines.push(`- \`${cat.category}\` (${actions.join(', ')})`);
+      }
+      lines.push('');
+    } else {
+      const hint = sec.macosHint ? ` (${macosHintDisplay(sec.macosHint)})` : '';
+      lines.push(`## msg v${sec.msgV}${hint}`);
+      lines.push('');
+      lines.push('### New Struct Fields');
+      lines.push('');
+      const byStruct = {};
+      for (const { structName, field } of sec.fields)
+        (byStruct[structName] = byStruct[structName] || []).push(field);
+      for (const [structName, fields] of Object.entries(byStruct).sort()) {
+        lines.push(`**\`${structName}\`**`);
+        lines.push('');
+        lines.push('| Field | Type | Doc |');
+        lines.push('|-------|------|-----|');
+        for (const f of fields)
+          lines.push(`| \`${f.name}\` | \`${f.type}\` | ${f.doc || ''} |`);
+        lines.push('');
+      }
+    }
+  }
+
+  if (sectionIdx !== undefined) {
+    const sec = sections[sectionIdx];
+    if (!sec) return '';
+    renderSection(sec);
+  } else {
+    lines.push('# What\'s New');
+    lines.push('');
+    for (const sec of sections) renderSection(sec);
+  }
+
+  return lines.join('\n');
+}
+
+// ─── Clipboard helpers ────────────────────────────────────────────────────────
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function copyToClipboard(text, btn) {
+  const orig = btn.textContent;
+  const done = () => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
 // ─── Restore from URL hash ────────────────────────────────────────────────────
 function parseHash(hash) {
   const isMd = hash.endsWith('.md');
   const cleaned = isMd ? hash.slice(0, -3) : hash;
+  if (cleaned === 'changelog') return { kind: 'changelog', name: null, isMd };
+  if (cleaned === 'eventmap')  return { kind: 'eventmap',  name: null, isMd: false };
   const colon = cleaned.indexOf(':');
   if (colon === -1) return null;
   const kind = cleaned.slice(0, colon);
@@ -996,8 +1584,23 @@ function parseHash(hash) {
 
 function restoreFromHash() {
   const parsed = parseHash(location.hash.slice(1));
-  state.selected = parsed ? { kind: parsed.kind, name: parsed.name } : null;
-  state.isMd     = parsed?.isMd ?? false;
+  if (parsed?.kind === 'changelog') {
+    state.showChangelog = true;
+    state.showEventMap = false;
+    state.selected = null;
+    state.isMd = parsed.isMd;
+  } else if (parsed?.kind === 'eventmap') {
+    state.showEventMap = true;
+    state.showChangelog = false;
+    state.selected = null;
+    state.isMd = false;
+  } else {
+    state.showChangelog = false;
+    state.showEventMap = false;
+    state.selected = parsed ? { kind: parsed.kind, name: parsed.name } : null;
+    state.isMd     = parsed?.isMd ?? false;
+    if (!parsed) state.showChangelog = true;
+  }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -1014,18 +1617,10 @@ function restoreFromHash() {
 
 applyPrefs();
 restoreFromHash();
-if (state.markdownMode && state.selected) {
-  const { kind, name } = state.selected;
-  const md = generateMarkdown(kind, name);
-  const escaped = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  document.title = `${name}.md`;
-  document.body.innerHTML = `<pre style="font-family:monospace;font-size:14px;line-height:1.6;max-width:900px;margin:2rem auto;padding:0 1rem;white-space:pre-wrap;word-break:break-word">${escaped}</pre>`;
-  document.body.style.visibility = '';
-} else {
-  document.body.style.visibility = '';
-  renderSidebar();
-  renderDetail();
-}
+renderSidebar();
+if (state.showChangelog) document.getElementById('btn-changelog')?.classList.add('active');
+if (state.showEventMap)  document.getElementById('btn-eventmap')?.classList.add('active');
+renderDetail();
 </script>
 </body>
 </html>
