@@ -17,7 +17,6 @@ No third-party Python dependencies — stdlib only.
 
 import argparse
 import plistlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -49,7 +48,6 @@ PARSE_SCRIPT = REPO_ROOT / "parse.py"
 def fetch_catalog() -> dict:
     """Download and parse the SUCatalog plist (gzip-compressed)."""
     import gzip
-    import io
 
     print(f"Fetching catalog: {SUCATALOG_URL}")
     with urllib.request.urlopen(SUCATALOG_URL, timeout=30) as resp:
@@ -69,7 +67,6 @@ def find_latest_sdk_pkg(catalog: dict) -> tuple[str, str] | None:
     Scan the catalog for the most recent SDK package.
     Returns (pkg_url, post_date_str) or None.
     """
-    from datetime import timezone
 
     best_url = None
     best_date = None
