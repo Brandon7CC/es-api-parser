@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="auto">
 <head>
 <meta charset="UTF-8">
 <title>ES API Parser — Endpoint Security Reference</title>
@@ -289,14 +289,14 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
   </div>
 </div>
 
-<script src="generated/esvis-data.js"></script>
+<script src="generated/endpointsecurity-data.js"></script>
 <script>
-if (!window.ESVIS_DATA) {
+if (!window.ENDPOINT_SECURITY_DATA) {
   document.getElementById('detail').innerHTML =
-    '<p class="placeholder">⚠ generated/esvis-data.js not found.<br>Run <code>python3 parse.py</code> first.</p>';
+    '<p class="placeholder">⚠ generated/endpointsecurity-data.js not found.<br>Run <code>python3 parse.py</code> first.</p>';
 }
 
-const D = window.ESVIS_DATA || {events:[], structs:{}, enums:{}};
+const D = window.ENDPOINT_SECURITY_DATA || {events:[], structs:{}, enums:{}};
 
 // ─── Telemetry classification ─────────────────────────────────────────────────
 const TELEMETRY_CLASSES = {
@@ -784,8 +784,8 @@ macosFilter.addEventListener('change', function() {
 
 // ─── Preferences ─────────────────────────────────────────────────────────────
 const prefs = {
-  theme: localStorage.getItem('esap-theme') || 'dark',
-  scale: parseInt(localStorage.getItem('esap-scale') || '100', 10),
+  theme: localStorage.getItem('esap-theme') || 'auto',
+  scale: parseInt(localStorage.getItem('esap-scale') || '115', 10),
 };
 
 function applyPrefs() {
