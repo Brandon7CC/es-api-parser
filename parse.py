@@ -431,6 +431,12 @@ def write_sitemap(data: dict, out_path: Path) -> None:
     # Homepage
     lines.append(url(BASE_URL + "/"))
 
+    # Changelog deep-link
+    lines.append(url(BASE_URL + "/#changelog"))
+
+    # Event Map deep-link
+    lines.append(url(BASE_URL + "/#eventmap"))
+
     # Events — grouped by category; the app uses #event:<category>
     seen_categories: set = set()
     for event in data["events"]:
