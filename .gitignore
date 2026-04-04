@@ -4,6 +4,7 @@ generated/
 # Python
 __pycache__/
 *.py[cod]
+.ruff_cache/
 
 # macOS
 .DS_Store

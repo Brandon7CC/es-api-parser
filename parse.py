@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-parse.py — Parse EndpointSecurity API headers into esvis-data.js and esvis.json
+parse.py — Parse EndpointSecurity API headers into endpointsecurity-data.js and endpointsecurity.json
 
 Usage:
     python3 parse.py
@@ -15,8 +15,12 @@ from pathlib import Path
 # ─── Config ───────────────────────────────────────────────────────────────────
 
 _p = argparse.ArgumentParser(description="Parse EndpointSecurity headers")
-_p.add_argument("--sdk-path", default=None, metavar="PATH",
-                help="Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun")
+_p.add_argument(
+    "--sdk-path",
+    default=None,
+    metavar="PATH",
+    help="Explicit SDK root (e.g. /path/to/MacOSX.sdk); skips xcrun",
+)
 _args = _p.parse_args()
 
 if _args.sdk_path:
@@ -45,10 +49,11 @@ def read_header(name: str, seen: set = None) -> str:
             return read_header(included, seen)
         return m.group(0)
 
-    return re.sub(r'#include\s*<EndpointSecurity/([^>]+)>', inline, content)
+    return re.sub(r"#include\s*<EndpointSecurity/([^>]+)>", inline, content)
 
 
 # ─── Comment parsing ──────────────────────────────────────────────────────────
+
 
 def clean_block_comment(text: str) -> str:
     lines = []
@@ -95,6 +100,7 @@ def parse_doc_comment(raw: str) -> dict:
 
 # ─── Brace finder ─────────────────────────────────────────────────────────────
 
+
 def find_matching_brace(content: str, start: int) -> int:
     """Return position of the } matching the { at start, skipping comments."""
     depth = 0
@@ -130,6 +136,7 @@ def find_matching_brace(content: str, start: int) -> int:
 
 
 # ─── Typedef block extractor ──────────────────────────────────────────────────
+
 
 def extract_typedefs(content: str) -> list:
     """Return list of {kind, name, body, doc} for every typedef struct/union/enum."""
@@ -168,13 +175,20 @@ def extract_typedefs(content: str) -> list:
                     source_start = cm.start()
 
         source = content[source_start : brace_end + 1 + name_m.end()].rstrip()
-        doc = parse_doc_comment(doc_comment) if doc_comment else {"brief": "", "fields": {}, "notes": []}
-        results.append({"kind": kind, "name": name, "body": body, "doc": doc, "source": source})
+        doc = (
+            parse_doc_comment(doc_comment)
+            if doc_comment
+            else {"brief": "", "fields": {}, "notes": []}
+        )
+        results.append(
+            {"kind": kind, "name": name, "body": body, "doc": doc, "source": source}
+        )
 
     return results
 
 
 # ─── Struct body parser ───────────────────────────────────────────────────────
+
 
 def extract_type_ref(raw_type: str):
     base = re.sub(r"\s*\*.*", "", raw_type).strip()
@@ -207,7 +221,9 @@ def parse_struct_body(body: str, field_docs: dict) -> list:
             continue
 
         since_version = None
-        vm = re.search(r"/\*\s*field available only if message version >= (\d+)\s*\*/", line)
+        vm = re.search(
+            r"/\*\s*field available only if message version >= (\d+)\s*\*/", line
+        )
         if vm:
             since_version = int(vm.group(1))
 
@@ -222,7 +238,7 @@ def parse_struct_body(body: str, field_docs: dict) -> list:
             continue
 
         name = m.group(1)
-        raw_type = clean[:m.start()].strip()
+        raw_type = clean[: m.start()].strip()
 
         if name in ("struct", "union", "typedef", "enum", "const", "void"):
             continue
@@ -250,6 +266,7 @@ def parse_struct_body(body: str, field_docs: dict) -> list:
 
 
 # ─── Enum body parser ─────────────────────────────────────────────────────────
+
 
 def parse_enum_body(body: str) -> list:
     values = []
@@ -305,6 +322,7 @@ def parse_enum_body(body: str) -> list:
 
 # ─── Event type enum parser ───────────────────────────────────────────────────
 
+
 def parse_event_types(content: str) -> list:
     for m in re.finditer(r"typedef\s+enum\s*\{", content):
         brace_start = m.end() - 1
@@ -348,31 +366,34 @@ def _parse_event_type_body(body: str) -> list:
 
         if name.startswith("ES_EVENT_TYPE_AUTH_"):
             action = "AUTH"
-            category = name[len("ES_EVENT_TYPE_AUTH_"):].lower()
+            category = name[len("ES_EVENT_TYPE_AUTH_") :].lower()
         elif name.startswith("ES_EVENT_TYPE_NOTIFY_"):
             action = "NOTIFY"
-            category = name[len("ES_EVENT_TYPE_NOTIFY_"):].lower()
+            category = name[len("ES_EVENT_TYPE_NOTIFY_") :].lower()
         elif name.startswith("ES_EVENT_TYPE_RESERVED_"):
             action = "RESERVED"
-            category = name[len("ES_EVENT_TYPE_"):].lower()
+            category = name[len("ES_EVENT_TYPE_") :].lower()
         else:
             current_value += 1
             continue
 
-        events.append({
-            "name": name,
-            "value": current_value,
-            "action": action,
-            "category": category,
-            "macosVersion": current_macos,
-            "struct": None,
-        })
+        events.append(
+            {
+                "name": name,
+                "value": current_value,
+                "action": action,
+                "category": category,
+                "macosVersion": current_macos,
+                "struct": None,
+            }
+        )
         current_value += 1
 
     return events
 
 
 # ─── es_events_t union parser ─────────────────────────────────────────────────
+
 
 def parse_events_union(content: str) -> dict:
     for m in re.finditer(r"typedef\s+union\s*\{", content):
@@ -395,13 +416,16 @@ def _parse_events_union_body(body: str) -> dict:
         clean = re.sub(r"//.*$", "", clean).strip()
         if not clean or not clean.endswith(";"):
             continue
-        m = re.match(r"(es_event_\w+_t)\s+\*?(?:_Nonnull\s+|_Nullable\s+)?(\w+)\s*;", clean)
+        m = re.match(
+            r"(es_event_\w+_t)\s+\*?(?:_Nonnull\s+|_Nullable\s+)?(\w+)\s*;", clean
+        )
         if m:
             mapping[m.group(2)] = m.group(1)
     return mapping
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
+
 
 def main():
     contents = {h: read_header(h) for h in HEADERS}
@@ -443,11 +467,13 @@ def main():
 
     data = {"events": events, "structs": structs, "enums": enums}
 
-    json_path = OUT_DIR / "esvis.json"
+    json_path = OUT_DIR / "endpointsecurity.json"
     json_path.write_text(json.dumps(data, indent=2))
 
-    js_path = OUT_DIR / "esvis-data.js"
-    js_path.write_text(f"window.ESVIS_DATA={json.dumps(data, separators=(',', ':'))};")
+    js_path = OUT_DIR / "endpointsecurity-data.js"
+    js_path.write_text(
+        f"window.ENDPOINT_SECURITY_DATA={json.dumps(data, separators=(',', ':'))};"
+    )
 
     auth_count = sum(1 for e in events if e["action"] == "AUTH")
     notify_count = sum(1 for e in events if e["action"] == "NOTIFY")
