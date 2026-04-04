@@ -4,12 +4,24 @@ A local developer reference for the macOS [Endpoint Security](https://developer.
 
 ## Usage
 
+### Local (macOS)
+
 ```sh
 python3 parse.py   # parse SDK headers → esvis-data.js
 open index.html    # open the viewer
 ```
 
 Requires Xcode (for `xcrun --show-sdk-path`). Re-run `parse.py` after an SDK update.
+
+You can also point `parse.py` at an explicit SDK root (useful for testing extracted SDKs):
+
+```sh
+python3 parse.py --sdk-path /path/to/MacOSX.sdk
+```
+
+### Serving
+
+The viewer is a static file — any HTTP server can serve it. Point your server's document root at a directory containing `index.html` and the `generated/` folder. To keep data current, schedule `parse.py` to re-run periodically (cron, systemd timer, or equivalent) and redeploy the output.
 
 ## Features
 
@@ -27,7 +39,7 @@ Requires Xcode (for `xcrun --show-sdk-path`). Re-run `parse.py` after an SDK upd
 
 | File | Description |
 |------|-------------|
-| `parse.py` | Parses `ESTypes.h`, `ESMessage.h`, `ESMessageCore.h` → `esvis-data.js` |
+| `parse.py` | Parses `ESTypes.h`, `ESMessage.h`, `ESClient.h` → `esvis-data.js` |
 | `index.html` | Self-contained viewer; loads `esvis-data.js` via `<script src>` |
 | `esvis-data.js` | Generated — not committed |
 | `esvis.json` | Generated (human-readable) — not committed |
