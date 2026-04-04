@@ -222,6 +222,50 @@ def _iter_cpio_old_ascii(data: bytes):
         yield name, content
 
 
+def _iter_cpio_newc(data: bytes):
+    """
+    Yield (name, file_bytes) from a newc cpio archive (magic 070701 or 070702).
+
+    Header is 110 bytes; all numeric fields are 8-digit hex.  Both the header+name
+    block and the file-data block are padded to a 4-byte boundary.
+    """
+    pos = 0
+    while pos + 110 <= len(data):
+        hdr = data[pos : pos + 110]
+        if hdr[:6] not in (b"070701", b"070702"):
+            break
+        namesize = int(hdr[94:102], 16)
+        filesize = int(hdr[54:62], 16)
+
+        name = data[pos + 110 : pos + 110 + namesize - 1].decode("utf-8", errors="replace")
+
+        # File data starts after header (110 B) + name, rounded up to 4-byte boundary
+        name_block = 110 + namesize
+        data_start = pos + name_block + (4 - name_block % 4) % 4
+
+        content = data[data_start : data_start + filesize]
+
+        # Advance past data, rounded up to 4-byte boundary
+        pos = data_start + filesize + (4 - filesize % 4) % 4
+
+        if name == "TRAILER!!!":
+            break
+        yield name, content
+
+
+def _iter_cpio(data: bytes):
+    """Dispatch to the correct cpio iterator based on the stream magic."""
+    if len(data) >= 6:
+        magic = data[:6]
+        if magic in (b"070701", b"070702"):
+            yield from _iter_cpio_newc(data)
+            return
+        if magic == b"070707":
+            yield from _iter_cpio_old_ascii(data)
+            return
+    # Unknown / empty — nothing to yield
+
+
 def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
     """
     Extract a macOS .pkg and return the SDK root path.
@@ -230,7 +274,7 @@ def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
       1. Parse the XAR container (zlib-compressed TOC, raw heap)
       2. Locate the 'Payload' file in the XAR heap
       3. Decode the PBZX stream (XZ-compressed chunks via lzma)
-      4. Walk the old-ASCII cpio archive, extracting only EndpointSecurity headers
+      4. Walk the cpio archive (old-ASCII or newc), extracting only EndpointSecurity headers
     No external binaries required.
     """
     print(f"Extracting: {pkg_path.name}")
@@ -251,7 +295,7 @@ def extract_pkg(pkg_path: Path, extract_dir: Path) -> Path:
         payload_dir = extract_dir / f"payload_{id(file_node)}"
         payload_dir.mkdir(exist_ok=True)
 
-        for name, content in _iter_cpio_old_ascii(cpio_bytes):
+        for name, content in _iter_cpio(cpio_bytes):
             if "EndpointSecurity" not in name:
                 continue
             rel = name.lstrip("./")
