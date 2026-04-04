@@ -1,5 +1,6 @@
 # Generated data files — run parse.py to create these
 generated/
+sitemap.xml
 
 # Python
 __pycache__/

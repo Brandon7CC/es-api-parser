@@ -10,6 +10,7 @@ Options:
                       If omitted, the active Xcode SDK is used via xcrun.
 
 Output is written to generated/ relative to this script.
+Sitemap is written to sitemap.xml at the repo root.
 """
 
 import re
@@ -17,6 +18,7 @@ import json
 import argparse
 import subprocess
 from pathlib import Path
+from urllib.parse import quote
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -413,6 +415,48 @@ def _parse_events_union_body(body: str) -> dict:
     return mapping
 
 
+# ─── Sitemap writer ──────────────────────────────────────────────────────────
+
+BASE_URL = "https://esapi.swiftlydetecting.com"
+
+
+def write_sitemap(data: dict, out_path: Path) -> None:
+    """Write sitemap.xml covering the homepage and every event/struct/enum URL."""
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>']
+    lines.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+
+    def url(loc: str) -> str:
+        return f"  <url><loc>{loc}</loc></url>"
+
+    # Homepage
+    lines.append(url(BASE_URL + "/"))
+
+    # Events — grouped by category; the app uses #event:<category>
+    seen_categories: set = set()
+    for event in data["events"]:
+        cat = event["category"]
+        if cat in seen_categories:
+            continue
+        seen_categories.add(cat)
+        lines.append(url(f"{BASE_URL}/#{quote('event:' + cat)}"))
+
+    # Structs
+    for name in data["structs"]:
+        lines.append(url(f"{BASE_URL}/#{quote('struct:' + name)}"))
+
+    # Enums
+    for name in data["enums"]:
+        lines.append(url(f"{BASE_URL}/#{quote('enum:' + name)}"))
+
+    lines.append("</urlset>")
+    out_path.write_text("\n".join(lines) + "\n")
+
+
+def write_robots(out_path: Path) -> None:
+    """Write a robots.txt that allows all crawlers and references the sitemap."""
+    out_path.write_text(f"User-agent: *\nAllow: /\nSitemap: {BASE_URL}/sitemap.xml\n")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 
@@ -482,6 +526,12 @@ def main():
         f"window.ENDPOINT_SECURITY_DATA={json.dumps(data, separators=(',', ':'))};"
     )
 
+    sitemap_path = Path(__file__).parent / "sitemap.xml"
+    write_sitemap(data, sitemap_path)
+
+    robots_path = Path(__file__).parent / "robots.txt"
+    write_robots(robots_path)
+
     auth_count = sum(1 for e in events if e["action"] == "AUTH")
     notify_count = sum(1 for e in events if e["action"] == "NOTIFY")
     print(f"Events : {len(events)} ({auth_count} AUTH, {notify_count} NOTIFY)")
@@ -489,6 +539,8 @@ def main():
     print(f"Enums  : {len(enums)}")
     print(f"Written: {json_path}")
     print(f"Written: {js_path}")
+    print(f"Written: {sitemap_path}")
+    print(f"Written: {robots_path}")
 
 
 if __name__ == "__main__":
