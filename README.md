@@ -10,7 +10,6 @@ A local developer reference for the macOS [Endpoint Security](https://developer.
 
 - Python 3.9+
 - **Local use:** Xcode or Xcode Command Line Tools (provides `xcrun` and the macOS SDK)
-- **Server use:** `xar` and `bsdtar` for `.pkg` extraction (`apt install xar libarchive-tools` on Debian/Ubuntu; both ship with Xcode Command Line Tools on macOS)
 
 ### Local (macOS)
 
@@ -31,7 +30,7 @@ python3 parse.py --sdk-path /path/to/MacOSX.sdk
 
 The viewer is a static file — any HTTP server can serve it. Point your server's document root at the repo root (which contains `index.html` and the `generated/` folder).
 
-`update_sdk.py` automates keeping the data current. It polls Apple's software update catalog, downloads and extracts the SDK `.pkg` if a new version is available, and re-runs `parse.py` in place. Schedule it with a cron job, systemd timer, or launchd agent at whatever interval suits you. Requires `xar` and `bsdtar` for `.pkg` extraction (`apt install xar libarchive-tools` on Debian/Ubuntu; both are available via Xcode Command Line Tools on macOS).
+`update_sdk.py` automates keeping the data current. It polls Apple's software update catalog, downloads and extracts the SDK `.pkg` if a new version is available, and re-runs `parse.py` in place. Schedule it with a cron job, systemd timer, or launchd agent at whatever interval suits you. No external dependencies — stdlib only.
 
 ## Features
 
@@ -49,11 +48,11 @@ The viewer is a static file — any HTTP server can serve it. Point your server'
 
 | File | Description |
 |------|-------------|
-| `parse.py` | Parses `ESTypes.h`, `ESMessage.h`, `ESClient.h` → `endpointsecurity-data.js` |
-| `index.html` | Self-contained viewer; loads `endpointsecurity-data.js` via `<script src>` |
-| `endpointsecurity-data.js` | Generated — not committed |
-| `endpointsecurity.json` | Generated (human-readable) — not committed |
+| `parse.py` | Parses `ESTypes.h`, `ESMessage.h`, `ESClient.h` → `generated/endpointsecurity-data.js` |
+| `index.html` | Self-contained viewer; loads `generated/endpointsecurity-data.js` via `<script src>` |
 | `update_sdk.py` | Polls Apple's SUCatalog, extracts SDK, re-runs `parse.py` |
+| `generated/endpointsecurity-data.js` | Generated JS data file — not committed |
+| `generated/endpointsecurity.json` | Generated JSON (human-readable) — not committed |
 
 ## Contributing
 
